@@ -11,9 +11,7 @@ interface AttachmentContextValue {
   clearAttachment: () => void;
 }
 
-/**
- * Extract file details from full file path
- */
+// Extract file details from full file path
 const parseFilePath = (filePath: string): FileAttachment => {
   const parts = filePath.split(/[/\\]/);
   const fileNameWithExtension = parts[parts.length - 1] || "";
@@ -48,33 +46,21 @@ export const AttachmentProvider: React.FC<AttachmentProviderProps> = ({
   );
   const [isAttachmentUsed, setIsAttachmentUsed] = useState(false);
 
-  /**
-   * Set attachment directly
-   */
   const setAttachment = useCallback((file: FileAttachment | null) => {
     setAttachmentState(file);
     setIsAttachmentUsed(false);
   }, []);
 
-  /**
-   * Set attachment from file path
-   */
   const setAttachmentFromPath = useCallback((filePath: string) => {
     const fileDetails = parseFilePath(filePath);
     setAttachmentState(fileDetails);
     setIsAttachmentUsed(false);
   }, []);
 
-  /**
-   * Mark the current attachment as used in a message
-   */
   const markAttachmentAsUsed = useCallback(() => {
     setIsAttachmentUsed(true);
   }, []);
 
-  /**
-   * Clear the current attachment
-   */
   const clearAttachment = useCallback(() => {
     setAttachmentState(null);
     setIsAttachmentUsed(false);
@@ -99,10 +85,6 @@ export const AttachmentProvider: React.FC<AttachmentProviderProps> = ({
 //    CUSTOM HOOK
 // ---------------------
 
-/**
- * Hook to access attachment context
- * @throws Error if used outside AttachmentProvider
- */
 export const useAttachmentContext = (): AttachmentContextValue => {
   const context = useContext(AttachmentContext);
 

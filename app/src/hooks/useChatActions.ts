@@ -1,8 +1,10 @@
 import { useCallback, useRef, useEffect } from "react";
-import { useChatContext } from "@/contexts/ChatContext";
-import { useModelSettings } from "@/contexts/ModelSettingsContext";
-import { useAttachmentContext } from "@/contexts/AttachmentContext";
-import { useUIContext } from "@/contexts/UIContext";
+import {
+  useChatContext,
+  useModelSettings,
+  useAttachmentContext,
+  useUIContext,
+} from "@/contexts";
 import {
   useChatStream,
   startChatStream,

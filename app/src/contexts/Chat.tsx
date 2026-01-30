@@ -33,10 +33,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Use ref to generate consistent IDs
   const messageCounterRef = useRef(0);
 
-  /**
-   * Add a new message to the chat
-   * @returns The created message with generated ID
-   */
   const addMessage = useCallback(
     (message: Omit<UIMessage, "id" | "timestamp">): UIMessage => {
       const newMessage: UIMessage = {
@@ -51,9 +47,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     [],
   );
 
-  /**
-   * Update an existing message by ID
-   */
   const updateMessage = useCallback(
     (id: string, updates: Partial<UIMessage>) => {
       setMessages((prev) =>
@@ -63,17 +56,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     [],
   );
 
-  /**
-   * Clear all messages from chat
-   */
   const clearMessages = useCallback(() => {
     setMessages([]);
     messageCounterRef.current = 0;
   }, []);
 
-  /**
-   * Set the current session ID
-   */
   const setSessionId = useCallback((id: string | null) => {
     setSessionIdState(id);
   }, []);
@@ -95,10 +82,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 //    CUSTOM HOOK
 // ---------------------
 
-/**
- * Hook to access chat context
- * @throws Error if used outside ChatProvider
- */
 export const useChatContext = (): ChatContextValue => {
   const context = useContext(ChatContext);
 

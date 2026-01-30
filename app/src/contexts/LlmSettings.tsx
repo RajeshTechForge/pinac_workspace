@@ -15,31 +15,22 @@ import {
   ModelConfig,
 } from "@/config/models";
 
-// ============================================================================
-// CONTEXT DEFINITION
-// ============================================================================
-
 interface ModelSettingsContextValue {
-  // Current selection
   selectedProviderId: string;
   selectedModelId: string;
 
-  // Provider settings (temperature, topK, etc.)
   providerSettings: ProviderSettings;
 
-  // Dynamic models state
   ollamaModels: ModelConfig[];
   isLoadingOllamaModels: boolean;
   ollamaError: string | null;
 
-  // Actions
   setSelectedProvider: (providerId: string) => void;
   setSelectedModel: (modelId: string) => void;
   updateProviderSetting: (providerId: string, key: string, value: any) => void;
   getProviderSetting: (providerId: string, key: string) => any;
   refreshOllamaModels: () => Promise<void>;
 
-  // Computed values
   getCurrentProviderName: () => string;
   getCurrentModelName: () => string;
   getCurrentSettings: () => Record<string, any>;
@@ -50,19 +41,11 @@ const ModelSettingsContext = createContext<ModelSettingsContextValue | null>(
   null,
 );
 
-// ============================================================================
-// STORAGE KEYS
-// ============================================================================
-
 const STORAGE_KEYS = {
   SELECTED_PROVIDER: "selected-provider-id",
   SELECTED_MODEL: "selected-model-id",
   PROVIDER_SETTINGS_PREFIX: "provider-settings-",
 } as const;
-
-// ============================================================================
-// PROVIDER COMPONENT
-// ============================================================================
 
 interface ModelSettingsProviderProps {
   children: React.ReactNode;
@@ -71,11 +54,6 @@ interface ModelSettingsProviderProps {
 export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
   children,
 }) => {
-  // ========================================
-  // STATE
-  // ========================================
-
-  // Selected provider & model
   const [selectedProviderId, setSelectedProviderIdState] = useState<string>(
     () => {
       const stored = localStorage.getItem(STORAGE_KEYS.SELECTED_PROVIDER);
@@ -89,12 +67,10 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     return stored || DEFAULT_MODEL_ID;
   });
 
-  // Provider-specific settings
   const [providerSettings, setProviderSettings] = useState<ProviderSettings>(
     () => {
       const settings: ProviderSettings = {};
 
-      // Load settings for each provider from localStorage
       Object.keys(MODEL_PROVIDERS).forEach((providerId) => {
         const storageKey = `${STORAGE_KEYS.PROVIDER_SETTINGS_PREFIX}${providerId}`;
         const stored = localStorage.getItem(storageKey);
@@ -119,21 +95,14 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
   const [isLoadingOllamaModels, setIsLoadingOllamaModels] = useState(false);
   const [ollamaError, setOllamaError] = useState<string | null>(null);
 
-  // ========================================
-  // PERSISTENCE
-  // ========================================
-
-  // Persist selected provider
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SELECTED_PROVIDER, selectedProviderId);
   }, [selectedProviderId]);
 
-  // Persist selected model
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL, selectedModelId);
   }, [selectedModelId]);
 
-  // Persist provider settings
   useEffect(() => {
     Object.entries(providerSettings).forEach(([providerId, settings]) => {
       const storageKey = `${STORAGE_KEYS.PROVIDER_SETTINGS_PREFIX}${providerId}`;
@@ -141,13 +110,9 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     });
   }, [providerSettings]);
 
-  // ========================================
-  // OLLAMA MODELS FETCHING
-  // ========================================
+  //        OLLAMA MODELS FETCHING
+  // ----------------------------------------
 
-  /**
-   * Fetch available Ollama models from the backend
-   */
   const fetchOllamaModels = useCallback(async (): Promise<void> => {
     setIsLoadingOllamaModels(true);
     setOllamaError(null);
@@ -175,10 +140,8 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
 
       setOllamaModels(modelConfigs);
 
-      // Update the global MODEL_PROVIDERS configuration
       updateProviderModels("ollama", modelConfigs);
 
-      // If currently on Ollama provider, validate the selected model
       if (selectedProviderId === "ollama") {
         const modelExists = modelConfigs.find((m) => m.id === selectedModelId);
         if (!modelExists && modelConfigs.length > 0) {
@@ -196,9 +159,6 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     }
   }, [selectedProviderId, selectedModelId]);
 
-  /**
-   * Refresh Ollama models (public API)
-   */
   const refreshOllamaModels = useCallback(async (): Promise<void> => {
     await fetchOllamaModels();
   }, [fetchOllamaModels]);
@@ -208,13 +168,9 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     fetchOllamaModels();
   }, [fetchOllamaModels]);
 
-  // ========================================
-  // ACTIONS
-  // ========================================
+  //          ACTIONS
+  // -----------------------------
 
-  /**
-   * Set the selected provider
-   */
   const setSelectedProvider = useCallback(
     (providerId: string) => {
       if (!MODEL_PROVIDERS[providerId]) {
@@ -244,16 +200,10 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     [ollamaModels],
   );
 
-  /**
-   * Set the selected model (within current provider)
-   */
   const setSelectedModel = useCallback((modelId: string) => {
     setSelectedModelIdState(modelId);
   }, []);
 
-  /**
-   * Update a specific setting for a provider
-   */
   const updateProviderSetting = useCallback(
     (providerId: string, key: string, value: any) => {
       setProviderSettings((prev) => ({
@@ -267,9 +217,6 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     [],
   );
 
-  /**
-   * Get a specific setting for a provider
-   */
   const getProviderSetting = useCallback(
     (providerId: string, key: string): any => {
       return providerSettings[providerId]?.[key];
@@ -277,20 +224,10 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     [providerSettings],
   );
 
-  // ========================================
-  // COMPUTED VALUES
-  // ========================================
-
-  /**
-   * Get current provider display name
-   */
   const getCurrentProviderName = useCallback((): string => {
     return MODEL_PROVIDERS[selectedProviderId]?.displayName || "Unknown";
   }, [selectedProviderId]);
 
-  /**
-   * Get current model display name
-   */
   const getCurrentModelName = useCallback((): string => {
     // For dynamic providers like Ollama, use the dynamic models
     if (selectedProviderId === "ollama") {
@@ -316,16 +253,10 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     ollamaError,
   ]);
 
-  /**
-   * Get current provider settings
-   */
   const getCurrentSettings = useCallback((): Record<string, any> => {
     return providerSettings[selectedProviderId] || {};
   }, [selectedProviderId, providerSettings]);
 
-  /**
-   * Get available models for a provider (handles dynamic providers)
-   */
   const getAvailableModels = useCallback(
     (providerId: string): ModelConfig[] => {
       if (providerId === "ollama") {
@@ -335,10 +266,6 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
     },
     [ollamaModels],
   );
-
-  // ========================================
-  // CONTEXT VALUE
-  // ========================================
 
   const value: ModelSettingsContextValue = {
     selectedProviderId,
@@ -365,14 +292,9 @@ export const ModelSettingsProvider: React.FC<ModelSettingsProviderProps> = ({
   );
 };
 
-// ============================================================================
-// CUSTOM HOOK
-// ============================================================================
+//    CUSTOM HOOK
+// ---------------------
 
-/**
- * Hook to access model settings context
- * @throws Error if used outside ModelSettingsProvider
- */
 export const useModelSettings = (): ModelSettingsContextValue => {
   const context = useContext(ModelSettingsContext);
 

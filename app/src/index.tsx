@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { AppProviders } from "./contexts";
+import { AppProviders } from "@/contexts";
 import App from "./App.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

@@ -1,12 +1,10 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
 interface UIContextValue {
-  // State
   isWelcomeVisible: boolean;
   inputText: string;
   isInputDisabled: boolean;
 
-  // Actions
   setWelcomeVisible: (visible: boolean) => void;
   setInputText: (text: string) => void;
   setInputDisabled: (disabled: boolean) => void;
@@ -24,9 +22,6 @@ export const UIProvider: React.FC<UIProviderProps> = ({ children }) => {
   const [inputText, setInputText] = useState("");
   const [isInputDisabled, setInputDisabled] = useState(false);
 
-  /**
-   * Reset input to initial state
-   */
   const resetInput = useCallback(() => {
     setInputText("");
   }, []);
