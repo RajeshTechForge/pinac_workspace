@@ -15,6 +15,14 @@ const AuthRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const auth = useContext(AuthContext);
+  if (!auth?.isAuthenticated) {
+    return <Navigate to="/signin" replace />;
+  }
+  return children;
+};
+
 const App = () => {
   return (
     <HashRouter>
@@ -22,9 +30,9 @@ const App = () => {
         <Route
           path="/"
           element={
-            // <ProtectedRoute>
-            <MainLayout />
-            // </ProtectedRoute>
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
           }
         >
           <Route index element={<HomePage />} />

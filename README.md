@@ -28,13 +28,10 @@ PINAC Workspace is a modern-looking _privacy-first_ AI chat for desktops, seamle
 
 - **Total Freedom:** Choose between local (Ollama) and Cloud AI models (using API keys) to suit your workflow and privacy needs.
 - **Privacy by Design:** No personal data is ever shared or stored on our servers. All features work fully offline, ensuring your data stays on your device.
+- **Secure Authentication:** Sign in and out securely with Firebase Authentication, protecting your identity and access.
 - **Real-Time Web Search:** Instantly access up-to-date information from the web to answer questions and enhance conversations.
 - **Local Chat History:** All conversations are stored locally for your privacy and convenience. Easily revisit and refine past chats.
 - **Modern Desktop Experience:** Enjoy a sleek, responsive UI built with Electron and React, powered by a robust Python backend.
-
-<!-- - **Local RAG Integration:** Attach documents directly in chat and leverage a lightweight, local Retrieval-Augmented Generation (RAG) model. Optionally, plug in your own RAG model for advanced use cases.
-- **Secure Authentication:** Sign in and out securely with Firebase Authentication, protecting your identity and access. -->
-
 
 ## 🛹 UI-Design
 
@@ -76,17 +73,43 @@ PINAC Workspace's python backend utilizes [uv](https://github.com/astral-sh/uv) 
    # electron app at once
    ```
 
+> [!IMPORTANT]
+> **For Linux Users (Dev Mode):** To enable sign-in functionality, you need to register the custom protocol handler. Run the following commands once:
+>
+> ```bash
+> # Create launcher script
+> cat > ~/pinac-workspace-launcher.sh << 'EOF'
+> #!/bin/bash
+> cd /path/to/pinac_workspace/app
+> /path/to/pinac_workspace/app/node_modules/.bin/electron . "$@"
+> EOF
+> chmod +x ~/pinac-workspace-launcher.sh
+>
+> # Create desktop entry (replace /path/to/ with your actual path)
+> cat > ~/.local/share/applications/pinac-workspace-dev.desktop << 'EOF'
+> [Desktop Entry]
+> Version=1.0
+> Name=PINAC Workspace Dev
+> Exec=/home/$USER/pinac-workspace-launcher.sh %u
+> Type=Application
+> MimeType=x-scheme-handler/pinac-workspace;
+> EOF
+>
+> # Register the protocol
+> xdg-mime default pinac-workspace-dev.desktop x-scheme-handler/pinac-workspace
+> update-desktop-database ~/.local/share/applications
+> ```
+>
+> This enables the browser to redirect back to the app after authentication. For production builds (AppImage/deb), this is handled automatically.
 
 ## 🤝 Contributing
 
 We love contributors! Whether you are fixing a bug or suggesting a feature.  
 Check out [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
-
 ## 📄 License
 
 Distributed under the **MIT license**. See [LICENSE](LICENSE) for more information.
-
 
 ## 🌏 Contributors
 

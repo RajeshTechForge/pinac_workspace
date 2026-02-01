@@ -6,12 +6,10 @@ import { app } from "electron";
 class SecureMasterKeyManager {
   private static readonly KEY_FILE_NAME = "app-secret.key";
 
-  // Generates a cryptographically secure random master key
   static generateMasterKey(length: number = 64): string {
     return crypto.randomBytes(length).toString("hex");
   }
 
-  // Gets or creates a persistent master key for the application
   static getPersistentMasterKey(): string {
     const userDataPath = app.getPath("userData");
     const keyFilePath = path.join(userDataPath, this.KEY_FILE_NAME);
@@ -35,16 +33,10 @@ class SecureMasterKeyManager {
     }
   }
 
-  /**
-   * Provides an additional layer of key derivation
-   * @param masterKey Original master key
-   * @param salt Optional salt for key derivation
-   * @returns Derived key
-   */
   static deriveMasterKey(masterKey: string, salt?: string): string {
     const finalSalt = salt || "default-app-salt";
     const iterations = 100000; // PBKDF2 iterations
-    const keyLength = 64; // bytes
+    const keyLength = 64;
 
     return crypto
       .pbkdf2Sync(masterKey, finalSalt, iterations, keyLength, "sha512")

@@ -17,8 +17,7 @@ class SecureTokenManager {
     this.encryptionKey = salt;
 
     this.store = new Store({
-      name: "secure-tokens",
-      encryptionKey: masterKey,
+      name: "pinac-secure-tokens",
     });
   }
 

@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { LLMSelector } from "./components/LLMSelector";
 import { AdvancedSettings } from "./components/AdvancedSettings";
+import { AuthContext } from "@/contexts";
 // Icons
 import { IoLogOutOutline } from "react-icons/io5";
 import { LuUpload } from "react-icons/lu";
 import profileImage from "@/assets/icon/User Icon.png";
 
 export const Settings = () => {
+  const auth = useContext(AuthContext);
   const [displayName, setDisplayName] = useState<string>("");
   const [nickname, setNickname] = useState<string>("");
   const [emailId, setEmailId] = useState<string>("");
@@ -18,8 +20,7 @@ export const Settings = () => {
   );
 
   const handleLogout = () => {
-    window.ipcRenderer.send("logout");
-    window.ipcRenderer.send("reload-app");
+    auth?.logout();
   };
 
   const saveUserInfo = () => {

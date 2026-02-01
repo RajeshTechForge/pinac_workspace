@@ -30,5 +30,11 @@
   linux: {
     target: ["AppImage", "deb"],
     artifactName: "${productName}-Linux-${version}.${ext}",
+    category: "Utility",
+    mimeTypes: ["x-scheme-handler/pinac-workspace"],
+  },
+  protocols: {
+    name: "PINAC Workspace",
+    schemes: ["pinac-workspace"],
   },
 }
