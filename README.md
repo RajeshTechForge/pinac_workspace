@@ -1,16 +1,11 @@
 <div align="center">
 
-<img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/header_2.png" alt="header image">
+<img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/header.png" alt="header image">
 
 <br>
 <br>
 
-<img alt="Github Contributors" src="https://img.shields.io/github/contributors/RajeshTechForge/pinac_workspace"/>
-<img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/RajeshTechForge/pinac_workspace"/>
-
-[![View My Profile](https://img.shields.io/badge/View-My_Profile-blue?logo=GitHub)](https://github.com/rajeshtechforge)
-
-A privacy-first, cross-platform, open-source desktop AI assistant for all
+**A privacy-first, cross-platform, open-source desktop AI application for all**
 
 <br>
 
@@ -19,8 +14,6 @@ A privacy-first, cross-platform, open-source desktop AI assistant for all
 </div>
 
 <br />
-
-## PINAC Workspace
 
 PINAC Workspace is a modern-looking _privacy-first_ AI chat for desktops, seamlessly blending Electron-React for a modern user experience with powerfully Python backend. Unlock the full potential of AI with unparalleled simplicity and user-friendliness, while enjoying ultimate freedom and privacy.
 
