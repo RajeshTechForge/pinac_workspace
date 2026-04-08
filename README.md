@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/header.png" alt="header image">
+<img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/header.png" alt="PINAC Workspace header" />
 
-<br>
-<br>
+<br />
+<br />
 
-**A privacy-first, cross-platform, open-source desktop AI application for all**
+### Privacy-first, cross-platform, open-source desktop AI for everyone
 
-<br>
+<br />
 
 ![](https://skillicons.dev/icons?i=react,tailwindcss,typescript,vite,electron,python,fastapi)
 
@@ -15,105 +15,103 @@
 
 <br />
 
-PINAC Workspace is a modern-looking _privacy-first_ AI chat for desktops, seamlessly blending Electron-React for a modern user experience with powerfully Python backend. Unlock the full potential of AI with unparalleled simplicity and user-friendliness, while enjoying ultimate freedom and privacy.
+PINAC Workspace is a modern desktop AI chat experience built with Electron + React and powered by a Python backend. It is designed for people who want flexibility, speed, and control over their data.
 
-## ✨ Features
+Whether you prefer local models with Ollama or cloud models via API keys, PINAC Workspace gives you a clean, productive interface without compromising privacy.
 
-- **Total Freedom:** Choose between local (Ollama) and Cloud AI models (using API keys) to suit your workflow and privacy needs.
-- **Privacy by Design:** No personal data is ever shared or stored on our servers. All features work fully offline, ensuring your data stays on your device.
-- **Secure Authentication:** Sign in and out securely with Firebase Authentication, protecting your identity and access.
-- **Real-Time Web Search:** Instantly access up-to-date information from the web to answer questions and enhance conversations.
-- **Local Chat History:** All conversations are stored locally for your privacy and convenience. Easily revisit and refine past chats.
-- **Modern Desktop Experience:** Enjoy a sleek, responsive UI built with Electron and React, powered by a robust Python backend.
+## Why PINAC Workspace?
 
-## 🛹 UI-Design
+- **Model freedom:** Use local models (Ollama) or cloud models based on your workflow.
+- **Privacy by design:** Conversations and data stay on your machine.
+- **Cross-platform desktop UX:** Fast, responsive interface built for daily use.
+- **Secure sign-in:** Firebase Authentication for secure account access.
+- **Real-time web search:** Bring fresh, up-to-date context into conversations.
+- **Local chat history:** Revisit and continue previous chats anytime.
 
-<img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/UI-Design.png" alt="app screenshot">
+## App Screenshot
 
-## 🚀 Getting Started
+<div align="center">
+  <img src="https://github.com/RajeshTechForge/pinac_workspace/blob/main/assets/UI-Design.png" alt="PINAC Workspace app screenshot" />
+</div>
 
-PINAC Workspace's python backend utilizes [uv](https://github.com/astral-sh/uv) for high-speed dependency resolution.
+## Quick Start
 
-> [!NOTE]  
-> Make sure your Ollama is running for using local AI models.
+The Python backend uses [uv](https://github.com/astral-sh/uv) for fast dependency management.
 
-1. Clone the Repository
+> [!NOTE]
+> If you plan to use local AI models, make sure Ollama is installed and running.
 
-   ```bash
-   git clone https://github.com/RajeshTechForge/pinac_workspace.git
-   cd pinac_workspace
+1. Clone the repository:
 
-   ```
+```bash
+git clone https://github.com/RajeshTechForge/pinac_workspace.git
+cd pinac_workspace
+```
 
-2. Install all dependencies
+2. Install dependencies:
 
-   ```bash
-   npm install
-   # install all backend and frontend dependencies
-   npm run install:all
+```bash
+npm install
+npm run install:all
+cp .env.example .env
+```
 
-   # Create a `.env` file based on example
-   # no need to modify .env, no changes required
-   cp .env.example .env
+3. Start the app (backend + desktop app):
 
-   ```
+```bash
+npm run dev
+```
 
-3. Launch the App
+## Linux (Dev Mode): Enable Sign-In Redirect
 
-   ```bash
-   npm run dev
-   # this will start both fast-api backend and
-   # electron app at once
-   ```
+In Linux development mode, you need to register the custom protocol handler once so browser auth can redirect back to the app.
 
-> [!IMPORTANT]
-> **For Linux Users (Dev Mode):** To enable sign-in functionality, you need to register the custom protocol handler. Run the following commands once:
->
-> ```bash
-> # Create launcher script
-> cat > ~/pinac-workspace-launcher.sh << 'EOF'
-> #!/bin/bash
-> cd /path/to/pinac_workspace/app
-> /path/to/pinac_workspace/app/node_modules/.bin/electron . "$@"
-> EOF
-> chmod +x ~/pinac-workspace-launcher.sh
->
-> # Create desktop entry (replace /path/to/ with your actual path)
-> cat > ~/.local/share/applications/pinac-workspace-dev.desktop << 'EOF'
-> [Desktop Entry]
-> Version=1.0
-> Name=PINAC Workspace Dev
-> Exec=/home/$USER/pinac-workspace-launcher.sh %u
-> Type=Application
-> MimeType=x-scheme-handler/pinac-workspace;
-> EOF
->
-> # Register the protocol
-> xdg-mime default pinac-workspace-dev.desktop x-scheme-handler/pinac-workspace
-> update-desktop-database ~/.local/share/applications
-> ```
->
-> This enables the browser to redirect back to the app after authentication. For production builds (AppImage/deb), this is handled automatically.
+```bash
+# Create launcher script
+cat > ~/pinac-workspace-launcher.sh << 'EOF'
+#!/bin/bash
+cd /path/to/pinac_workspace/app
+/path/to/pinac_workspace/app/node_modules/.bin/electron . "$@"
+EOF
+chmod +x ~/pinac-workspace-launcher.sh
 
-## 🤝 Contributing
+# Create desktop entry (replace /path/to/ with your actual path)
+cat > ~/.local/share/applications/pinac-workspace-dev.desktop << 'EOF'
+[Desktop Entry]
+Version=1.0
+Name=PINAC Workspace Dev
+Exec=/home/$USER/pinac-workspace-launcher.sh %u
+Type=Application
+MimeType=x-scheme-handler/pinac-workspace;
+EOF
 
-We love contributors! Whether you are fixing a bug or suggesting a feature.  
-Check out [Contributing Guidelines](CONTRIBUTING.md) for more details.
+# Register the protocol
+xdg-mime default pinac-workspace-dev.desktop x-scheme-handler/pinac-workspace
+update-desktop-database ~/.local/share/applications
+```
 
-## 📄 License
+For production builds (AppImage/deb), this is handled automatically.
 
-Distributed under the **MIT license**. See [LICENSE](LICENSE) for more information.
+## Contributing
 
-## 🌏 Contributors
+Contributions are always welcome, whether you are fixing bugs, improving UX, or proposing new features.
 
-Thanks to our contributors, we have received huge support from the open-source community.
+Please read the [Contributing Guidelines](CONTRIBUTING.md) to get started.
+
+## License
+
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+## Contributors
+
+Thanks to everyone who supports and improves this project.
 
 <a href="https://github.com/RajeshTechForge/pinac_workspace/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=RajeshTechForge/pinac_workspace" />
+  <img src="https://contrib.rocks/image?repo=RajeshTechForge/pinac_workspace" alt="Project contributors" />
 </a>
 
 ---
 
 <div align="center">
-<p>Built with ❤️ for a better AI future by @RajeshTechForge</p>
+  <p>Built with ❤️ for a better AI future by @RajeshTechForge</p>
 </div>
