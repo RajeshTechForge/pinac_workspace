@@ -33,7 +33,7 @@ Whether you prefer local models with Ollama or cloud models via API keys, PINAC 
 
 ```bash
 git clone https://github.com/RajeshTechForge/pinac_workspace.git
-cd pinac_workspace
+cd pinac_workspace/desktop
 ```
 
 2. Install dependencies:
@@ -45,9 +45,6 @@ npm install
 3. Start the app:
 
 ```bash
-# for just web app
-npm run dev
-
 # for desktop app with Tauri
 npm run tauri dev
 ```
