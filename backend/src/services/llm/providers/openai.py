@@ -297,6 +297,39 @@ class OpenAIProvider(LLMProvider):
                 self._initialized = False
                 logger.debug("OpenAIProvider shut down.")
 
+    async def _init_client_only(self) -> None:
+        """Create the AsyncOpenAI HTTP client without running a credential probe.
+
+        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        authentication errors surface from the first inference call rather than
+        from a pre-flight ``models.list`` probe, avoiding extra latency and
+        billable probe requests for each BYOK user key.
+
+        Raises:
+            LLMProviderInitError: If the AsyncOpenAI client cannot be created.
+        """
+        if self._initialized:
+            return
+
+        try:
+            self._client = AsyncOpenAI(
+                api_key=self._cfg.api_key,
+                base_url=self._cfg.base_url,
+                max_retries=self._cfg.max_retries,
+                default_headers=self._cfg.extra_headers or None,
+                organization=self._cfg.organization,
+                timeout=None,
+            )
+        except Exception as exc:
+            raise LLMProviderInitError(
+                "Failed to create AsyncOpenAI client.",
+                provider="openai",
+                details={"error": str(exc)},
+            ) from exc
+
+        self._initialized = True
+        logger.debug("OpenAIProvider client created (credential probe skipped).")
+
     # ------------------------------------------------------------------
     # Core inference methods
     # ------------------------------------------------------------------

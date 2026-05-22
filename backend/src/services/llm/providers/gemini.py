@@ -266,6 +266,47 @@ class GeminiProvider(LLMProvider):
                 self._initialized = False
                 logger.debug("GeminiProvider shut down.")
 
+    async def _init_client_only(self) -> None:
+        """Create the google-genai Client without running a credential probe.
+
+        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        authentication errors surface from the first inference call rather than
+        from a pre-flight ``count_tokens`` probe, avoiding extra latency and
+        billable probe requests for each BYOK user key.
+
+        Handles both API-key mode (``vertexai=False``) and Vertex AI mode
+        (``vertexai=True``), mirroring the client construction logic in
+        :meth:`initialize` without the subsequent probe call.
+
+        Raises:
+            LLMProviderInitError: If the google-genai Client cannot be created.
+        """
+        if self._initialized:
+            return
+
+        try:
+            if self._cfg.vertexai:
+                self._client = Client(
+                    vertexai=True,
+                    project=self._cfg.project,
+                    location=self._cfg.location,
+                    http_options=self._build_http_options(),
+                )
+            else:
+                self._client = Client(
+                    api_key=self._cfg.api_key,
+                    http_options=self._build_http_options(),
+                )
+        except Exception as exc:
+            raise LLMProviderInitError(
+                "Failed to create google-genai Client.",
+                provider="gemini",
+                details={"error": str(exc)},
+            ) from exc
+
+        self._initialized = True
+        logger.debug("GeminiProvider client created (credential probe skipped).")
+
     # ------------------------------------------------------------------
     # Core inference methods
     # ------------------------------------------------------------------

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .base import LLMProvider, LLMRequest, LLMResponse, Message, Role
+from .byok import BYOKLLMService
 from .providers import (
     AnthropicConfig,
     AnthropicProvider,
@@ -18,6 +19,7 @@ __all__ = [
     "LLMResponse",
     "Message",
     "Role",
+    "BYOKLLMService",
     "AnthropicConfig",
     "AnthropicProvider",
     "GeminiConfig",

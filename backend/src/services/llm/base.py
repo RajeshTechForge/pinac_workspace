@@ -58,7 +58,6 @@ class ProviderType(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
-    OLLAMA = "ollama"
 
 
 # ----------------------------------------------------------------------------
@@ -251,6 +250,30 @@ class LLMProvider(ABC):
     @abstractmethod
     async def shutdown(self) -> None:
         """Gracefully release all resources associated with the provider."""
+
+    @abstractmethod
+    async def _init_client_only(self) -> None:
+        """Create the underlying HTTP client without running a credential probe.
+
+        This is the lightweight initialization path used by
+        :class:`~src.services.llm.byok.BYOKLLMService` for BYOK requests.
+        Calling code receives auth errors from the first inference call
+        (:meth:`complete` / :meth:`stream`) rather than from a pre-flight probe,
+        which avoids extra latency and billable probe requests for each user key.
+
+        Concrete implementations must:
+        1. Guard against double-initialization (idempotent — return early if
+           ``self._initialized`` is already ``True``).
+        2. Instantiate the provider-specific async HTTP client and assign it to
+           ``self._client``.
+        3. Set ``self._initialized = True`` after successful client creation.
+        4. Raise :exc:`~src.services.llm.exceptions.LLMProviderInitError` if the
+           client cannot be constructed (e.g. missing or malformed credentials in
+           the config dataclass).
+
+        Raises:
+            LLMProviderInitError: If the underlying HTTP client cannot be created.
+        """
 
     async def __aenter__(self) -> "LLMProvider":
         """Initialize the provider asynchronously upon context entry."""

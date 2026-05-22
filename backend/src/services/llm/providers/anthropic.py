@@ -240,6 +240,37 @@ class AnthropicProvider(LLMProvider):
                 self._initialized = False
                 logger.debug("AnthropicProvider shut down.")
 
+    async def _init_client_only(self) -> None:
+        """Create the AsyncAnthropic HTTP client without running a credential probe.
+
+        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        authentication errors surface from the first inference call rather than
+        from a pre-flight token-count probe, avoiding extra latency and billable
+        probe requests for each BYOK user key.
+
+        Raises:
+            LLMProviderInitError: If the AsyncAnthropic client cannot be created.
+        """
+        if self._initialized:
+            return
+
+        try:
+            self._client = AsyncAnthropic(
+                api_key=self._cfg.api_key,
+                base_url=self._cfg.base_url,
+                max_retries=self._cfg.max_retries,
+                default_headers=self._cfg.extra_headers or None,
+            )
+        except Exception as exc:
+            raise LLMProviderInitError(
+                "Failed to create AsyncAnthropic client.",
+                provider="anthropic",
+                details={"error": str(exc)},
+            ) from exc
+
+        self._initialized = True
+        logger.debug("AnthropicProvider client created (credential probe skipped).")
+
     # ------------------------------------------------------------------
     # Core inference methods
     # ------------------------------------------------------------------
