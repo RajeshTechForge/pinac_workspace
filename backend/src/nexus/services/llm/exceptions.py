@@ -8,7 +8,7 @@ via the standard Python "__cause__" attribute.
 
 from __future__ import annotations
 
-from src.exceptions import NexusError
+from nexus.exceptions import NexusError
 
 
 class LLMError(NexusError):

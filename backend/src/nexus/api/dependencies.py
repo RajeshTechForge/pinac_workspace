@@ -12,7 +12,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from src.config import AppSettings, get_settings
+from nexus.config import AppSettings, get_settings
 
 
 class AppState:

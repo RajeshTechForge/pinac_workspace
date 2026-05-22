@@ -1,4 +1,4 @@
-"""Create and configure the FastAPI application for Pinac-Workspace.
+"""Create and configure the FastAPI application for Nexus.
 
 This module centralizes API bootstrap so production and test entry points use
 the same middleware, exception handlers, and router registration sequence.
@@ -9,11 +9,10 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.config import get_settings
-
-from .dependencies import app_lifespan
-from .exception_handlers import register_exception_handlers
-from .routes import api_router, auth_router_root, health_router_root
+from nexus.api.dependencies import app_lifespan
+from nexus.api.exception_handlers import register_exception_handlers
+from nexus.api.routes import api_router, auth_router_root, health_router_root
+from nexus.config import get_settings
 
 
 def create_application() -> FastAPI:

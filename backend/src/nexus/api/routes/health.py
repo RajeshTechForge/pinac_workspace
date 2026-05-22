@@ -4,15 +4,15 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
-from src.api.dependencies import SettingsDep
-from src.api.schemas import HealthResponse
+from nexus.api.dependencies import SettingsDep
+from nexus.api.schemas import HealthResponse
 
 router = APIRouter(tags=["Health"])
 
 
 @router.get("/")
 async def root():
-    return {"message": "Welcome to Pinac Workspace API"}
+    return {"message": "Welcome to Nexus API"}
 
 
 @router.get("/health", response_model=HealthResponse)

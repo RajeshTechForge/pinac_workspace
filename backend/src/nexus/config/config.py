@@ -1,4 +1,4 @@
-"""Centralized configuration management for Pinac-Workspace API using Pydantic Settings.
+"""Centralized configuration management for Nexus API using Pydantic Settings.
 
 Hybrid configuration approach:
   - System / structural configs  →  config.toml
@@ -110,9 +110,9 @@ class AppSettings(BaseSettings):
       3. Class-defined default values.
     """
 
-    config_path: str = "src/config/config.toml"
+    config_path: str = "src/nexus/config/config.toml"
 
-    app_name: str = "Pinac-Workspace API"
+    app_name: str = "Nexus API"
     app_version: str = "1.0.0"
     environment: str = "development"
     debug: bool = False

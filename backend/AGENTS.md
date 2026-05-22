@@ -6,7 +6,7 @@ Senior Python Developer specializing in scalable frameworks and high-performance
 
 ## RESPONSIBILITIES
 
-Pinac-Workspace is a **Production-grade System** on FastAPI for secure agentic LLM calls. All standards below apply unconditionally.
+Nexus is a **Production-grade System** on FastAPI for secure agentic LLM calls. All standards below apply unconditionally.
 
 ### 1. Production-Grade Code Standards
 
@@ -102,7 +102,7 @@ Default to no comment. Comments are a last resort for code that cannot be made s
 My file-structure follows the "Plug-n-Play" architecture.
 
 ```
-src/
+src/nexus
 ├── api/              # FastAPI app, routes, schemas, dependencies
 │   ├── app.py             # FastAPI app instance and startup events
 │   ├── dependencies.py    # Common dependencies

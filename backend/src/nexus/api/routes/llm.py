@@ -6,10 +6,10 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from src.api.schemas import ChatRequest, ChatResponse
-from src.exceptions import NexusError
-from src.services.llm import BYOKLLMService
-from src.services.llm.schemas import StreamChunkSchema
+from nexus.api.schemas import ChatRequest, ChatResponse
+from nexus.exceptions import NexusError
+from nexus.services.llm import BYOKLLMService
+from nexus.services.llm.schemas import StreamChunkSchema
 
 router = APIRouter()
 

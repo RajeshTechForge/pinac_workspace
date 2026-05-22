@@ -14,8 +14,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.config import get_settings
-from src.exceptions import HTTP_ERROR_CODE_MAP, NexusError
+from nexus.config import get_settings
+from nexus.exceptions import HTTP_ERROR_CODE_MAP, NexusError
 
 
 def create_error_response(

@@ -1,9 +1,9 @@
 # ========================================================================
-#  Pinac Workspace Backend — System Configuration
+#  Nexus — System Configuration
 # ========================================================================
 
 [app]
-name = "Pinac Workspace API"
+name = "Nexus API"
 version = "1.0.0"
 env = "development"       # "development" | "production"
 debug = false

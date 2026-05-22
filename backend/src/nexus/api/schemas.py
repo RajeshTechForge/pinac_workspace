@@ -5,8 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.services.llm.base import LLMRequest, ProviderType
-from src.services.llm.schemas import LLMResponseSchema, MessageSchema
+from nexus.services.llm.base import LLMRequest, ProviderType
+from nexus.services.llm.schemas import LLMResponseSchema, MessageSchema
 
 
 class BaseSchema(BaseModel):

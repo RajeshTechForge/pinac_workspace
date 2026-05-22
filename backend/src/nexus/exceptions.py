@@ -1,4 +1,4 @@
-"""Custom exception hierarchy for Pinac-Workspace."""
+"""Custom exception hierarchy for Nexus."""
 
 from __future__ import annotations
 
@@ -20,12 +20,12 @@ HTTP_ERROR_CODE_MAP: dict[int, str] = {
 
 
 class NexusError(Exception):
-    """Base exception for all Pinac-Nexus errors."""
+    """Base exception for all Nexus errors."""
 
     def __init__(
         self,
         message: str,
-        code: str = "PINAC_NEXUS_ERROR",
+        code: str = "NEXUS_ERROR",
         details: dict | None = None,
         status_code: int = 500,
     ):
