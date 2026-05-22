@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 
 from src.config import get_settings
 
 from .dependencies import app_lifespan
+from .exception_handlers import register_exception_handlers
 from .routes import api_router, auth_router_root, health_router_root
 
 
@@ -42,10 +42,7 @@ def create_application() -> FastAPI:
         allow_headers=settings.cors.allow_headers,
     )
 
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=settings.security.secret_key,
-    )
+    register_exception_handlers(app)
 
     app.include_router(health_router_root)
     app.include_router(auth_router_root)

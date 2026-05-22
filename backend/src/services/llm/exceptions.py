@@ -8,8 +8,10 @@ via the standard Python "__cause__" attribute.
 
 from __future__ import annotations
 
+from src.exceptions import NexusError
 
-class LLMError(Exception):
+
+class LLMError(NexusError):
     """Base exception for all LLM provider errors."""
 
     def __init__(
