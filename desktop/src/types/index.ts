@@ -35,6 +35,19 @@ export interface ChatState {
   settingsOpen: boolean;
   activeSettingsTab: "profile" | "llm";
   settings: AppSettings;
+  providers: LlmProvider[];
+}
+
+export interface LlmProvider {
+  value: string;
+  label: string;
+  defaultModel: string;
+}
+
+export interface AppConfig {
+  llm: {
+    providers: LlmProvider[];
+  };
 }
 
 export interface AppSettings {
@@ -46,7 +59,7 @@ export interface AppSettings {
   apiKey: string;
   temperature: number;
   maxTokens: number;
-  provider: "anthropic" | "openai";
+  provider: string;
 }
 
 export interface PaletteCommand {
@@ -75,4 +88,5 @@ export type ChatAction =
   | { type: "UPDATE_SETTINGS"; payload: Partial<AppSettings> }
   | { type: "TOGGLE_SETTINGS" }
   | { type: "SET_SETTINGS_TAB"; payload: "profile" | "llm" }
-  | { type: "CLEAR_CONVERSATION"; payload: string };
+  | { type: "CLEAR_CONVERSATION"; payload: string }
+  | { type: "SET_PROVIDERS"; payload: LlmProvider[] };

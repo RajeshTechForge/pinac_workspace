@@ -1,5 +1,6 @@
-import { createContext, useContext, useReducer, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
 import type { ChatState, ChatAction, Conversation } from "../types";
+import { readAppConfig } from "../services/config";
 
 const STORAGE_KEY_SIDEBAR_WIDTH = "pinac-sidebar-width";
 
@@ -156,6 +157,7 @@ function createInitialState(): ChatState {
     commandPaletteOpen: false,
     settingsOpen: false,
     activeSettingsTab: "profile",
+    providers: [],
     settings: {
       theme: "dark",
       fontSize: 14,
@@ -273,6 +275,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "SET_SETTINGS_TAB":
       return { ...state, activeSettingsTab: action.payload };
 
+    case "SET_PROVIDERS":
+      return { ...state, providers: action.payload };
+
     case "CLEAR_CONVERSATION": {
       const conv = state.conversations.find((c) => c.id === action.payload);
       if (!conv) return state;
@@ -298,6 +303,18 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, null, createInitialState);
+
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const config = await readAppConfig();
+        dispatch({ type: "SET_PROVIDERS", payload: config.llm.providers });
+      } catch (err) {
+        console.error("Failed to load app config:", err);
+      }
+    }
+    loadConfig();
+  }, []);
 
   return (
     <ChatContext.Provider value={{ state, dispatch }}>

@@ -1,0 +1,16 @@
+[llm]
+
+[[llm.providers]]
+value = "anthropic"
+label = "Anthropic"
+defaultModel = "claude-sonnet-4-6"
+
+[[llm.providers]]
+value = "openai"
+label = "OpenAI"
+defaultModel = "gpt-5.5"
+
+[[llm.providers]]
+value = "google"
+label = "Google"
+defaultModel = "gemini-3.5-flash"

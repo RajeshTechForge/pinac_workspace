@@ -2,14 +2,6 @@ import { useState } from "react";
 import { useChatContext } from "../../context/ChatContext";
 import Select from "../ui/Select";
 
-const PROVIDERS = [
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "google", label: "Google" },
-  { value: "mistral", label: "Mistral" },
-  { value: "groq", label: "Groq" },
-] as const;
-
 export default function LLMTab() {
   const { state, dispatch } = useChatContext();
   const [provider, setProvider] = useState(state.settings.provider);
@@ -18,17 +10,17 @@ export default function LLMTab() {
   const [temperature, setTemperature] = useState(state.settings.temperature);
   const [maxTokens, setMaxTokens] = useState(state.settings.maxTokens);
 
-  const modelPlaceholders: Record<string, string> = {
-    anthropic: "claude-sonnet-4-5",
-    openai: "gpt-4o",
-    google: "gemini-2.0-flash",
-    mistral: "mistral-large-latest",
-    groq: "llama-3.3-70b",
-  };
+  const options = state.providers.map((p) => ({
+    value: p.value,
+    label: p.label,
+  }));
 
   function handleProviderChange(newProvider: string) {
-    setProvider(newProvider as "anthropic" | "openai");
-    setDefaultModel(modelPlaceholders[newProvider] ?? defaultModel);
+    setProvider(newProvider);
+    const found = state.providers.find((p) => p.value === newProvider);
+    if (found) {
+      setDefaultModel(found.defaultModel);
+    }
   }
 
   function handleSave() {
@@ -45,19 +37,31 @@ export default function LLMTab() {
     temperature !== state.settings.temperature ||
     maxTokens !== state.settings.maxTokens;
 
+  if (state.providers.length === 0) {
+    return (
+      <div className="max-w-md py-8 text-center text-sm text-text-muted font-ui">
+        Loading providers...
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md space-y-5">
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">Provider</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          Provider
+        </label>
         <Select
           value={provider}
-          options={PROVIDERS}
+          options={options}
           onChange={handleProviderChange}
         />
       </div>
 
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">Default Model</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          Default Model
+        </label>
         <input
           type="text"
           value={defaultModel}
@@ -68,12 +72,14 @@ export default function LLMTab() {
       </div>
 
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">API Key</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          API Key
+        </label>
         <input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 text-sm text-text-primary font-ui placeholder-text-muted outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100 font-mono"
+          className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100 font-mono"
           placeholder="sk-..."
         />
       </div>
@@ -98,7 +104,9 @@ export default function LLMTab() {
       </div>
 
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">Max Tokens</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          Max Tokens
+        </label>
         <input
           type="number"
           min="256"
