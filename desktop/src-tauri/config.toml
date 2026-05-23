@@ -1,16 +1,41 @@
 [llm]
+defaultProvider = "anthropic"
 
 [[llm.providers]]
 value = "anthropic"
 label = "Anthropic"
 defaultModel = "claude-sonnet-4-6"
+models = [
+    { id = "claude-opus-4-7",  name = "Claude Opus 4.7" },
+    { id = "claude-opus-4-6",  name = "Claude Opus 4.6" },
+    { id = "claude-sonnet-4-6",  name = "Claude Sonnet 4.6" },
+    { id = "claude-sonnet-4-5-20250929",  name = "Claude sonnet 4.5" },
+    { id = "claude-haiku-4-5-20251001",  name = "Claude Haiku 4.5" },
+]
 
 [[llm.providers]]
 value = "openai"
 label = "OpenAI"
-defaultModel = "gpt-5.5"
+defaultModel = "gpt-5.4-mini"
+models = [
+    { id = "gpt-5.5", name = "GPT-5.5" },
+    { id = "gpt-5.5-pro-2026-04-23", name = "GPT-5.5 Pro" },
+    { id = "gpt-5.4", name = "GPT-5.4" },
+    { id = "gpt-5.4-mini", name = "GPT-5.4 Mini" },
+    { id = "gpt-5.4-nano", name = "GPT-5.4 Nano" },
+    { id = "gpt-5-2025-08-07", name = "GPT-5" },
+    { id = "gpt-4.1-2025-04-14", name = "GPT-4.1" },
+    { id = "gpt-4o-2024-08-06", name = "GPT-4o" },
+    { id = "gpt-4o-mini-2024-07-18", name = "GPT-4o Mini" },
+]
 
 [[llm.providers]]
 value = "google"
 label = "Google"
-defaultModel = "gemini-3.5-flash"
+defaultModel = "gemini-3.1-flash-lite"
+models = [
+  { id = "gemini-3-flash-preview", name = "Gemini 3 Flash" },
+  { id = "gemini-3.1-flash-lite", name = "Gemini 3.1 Flash" },
+  { id = "gemini-3.5-flash",   name = "Gemini 3.5 Flash" },
+  { id = "gemini-3.1-pro-preview", name = "Gemini 3.1 Pro" },
+]

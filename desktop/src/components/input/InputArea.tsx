@@ -8,12 +8,11 @@ export default function InputArea() {
   const { state, dispatch } = useChatContext();
   const { sendMessage, cancelStreaming, isStreaming } = useChat();
   const [text, setText] = useState("");
-  const [selectedModel, setSelectedModel] = useState(state.settings.defaultModel);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
-    
+
     let convId = state.activeConversationId;
     const activeConv = state.conversations.find((c) => c.id === convId);
 
@@ -21,7 +20,7 @@ export default function InputArea() {
       if (convId && activeConv) {
         dispatch({
           type: "RENAME_CONVERSATION",
-          payload: { id: convId, title: trimmed.slice(0, 50) }
+          payload: { id: convId, title: trimmed.slice(0, 50) },
         });
       } else {
         convId = `conv-${Date.now()}`;
@@ -31,7 +30,9 @@ export default function InputArea() {
             id: convId,
             title: trimmed.slice(0, 50),
             messages: [],
-            model: selectedModel,
+            // Model is read from context so it always reflects the latest
+            // ModelPicker selection without additional prop threading.
+            model: state.settings.defaultModel,
             createdAt: Date.now(),
             updatedAt: Date.now(),
             pinned: false,
@@ -39,10 +40,18 @@ export default function InputArea() {
         });
       }
     }
-    
-    sendMessage(trimmed, selectedModel, convId);
+
+    sendMessage(trimmed, convId);
     setText("");
-  }, [text, isStreaming, state.activeConversationId, selectedModel, sendMessage, dispatch]);
+  }, [
+    text,
+    isStreaming,
+    state.activeConversationId,
+    state.conversations,
+    state.settings.defaultModel,
+    sendMessage,
+    dispatch,
+  ]);
 
   return (
     <div className="border-t border-border bg-surface-1">
@@ -56,8 +65,6 @@ export default function InputArea() {
           />
           <InputToolbar
             text={text}
-            model={selectedModel}
-            onModelChange={setSelectedModel}
             onSend={handleSend}
             onCancel={cancelStreaming}
             isStreaming={isStreaming}

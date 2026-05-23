@@ -2,23 +2,20 @@ import { ArrowUp, Square } from "lucide-react";
 import ModelPicker from "./ModelPicker";
 import Badge from "../ui/Badge";
 
-interface InputToolbarProps {
+type InputToolbarProps = {
   text: string;
-  model: string;
-  onModelChange: (model: string) => void;
   onSend: () => void;
   onCancel: () => void;
   isStreaming: boolean;
-}
+};
 
+/** Estimates token count from raw text using a word-count heuristic. */
 function estimateTokens(text: string): number {
   return Math.round(text.split(/\s+/).filter(Boolean).length * 1.3);
 }
 
 export default function InputToolbar({
   text,
-  model,
-  onModelChange,
   onSend,
   onCancel,
   isStreaming,
@@ -28,11 +25,12 @@ export default function InputToolbar({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <ModelPicker selected={model} onSelect={onModelChange} />
+        <ModelPicker />
         {text.trim() && (
           <Badge>~{estimateTokens(text)} tok</Badge>
         )}
       </div>
+
       {isStreaming ? (
         <button
           aria-label="Cancel streaming"

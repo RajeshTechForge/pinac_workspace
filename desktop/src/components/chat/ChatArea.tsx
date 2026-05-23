@@ -35,7 +35,7 @@ export default function ChatArea() {
       });
     }
 
-    sendMessage(text, undefined, convId!);
+    sendMessage(text, convId ?? undefined);
   }
 
   if (!activeConv || activeConv.messages.length === 0) {

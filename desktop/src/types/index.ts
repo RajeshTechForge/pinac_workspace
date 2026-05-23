@@ -38,14 +38,24 @@ export interface ChatState {
   providers: LlmProvider[];
 }
 
+/** A single selectable model offered by an LLM provider. */
+export type LlmModel = {
+  /** Model identifier sent to the API (e.g. `"claude-sonnet-4-5"`). */
+  id: string;
+  /** Human-readable display name (e.g. `"Claude Sonnet 4.5"`). */
+  name: string;
+};
+
 export interface LlmProvider {
   value: string;
   label: string;
   defaultModel: string;
+  models: LlmModel[];
 }
 
 export interface AppConfig {
   llm: {
+    defaultProvider: string;
     providers: LlmProvider[];
   };
 }
@@ -56,9 +66,11 @@ export interface AppSettings {
   defaultModel: string;
   displayName: string;
   email: string;
-  apiKey: string;
+  apiKeySaved: boolean;
   temperature: number;
   maxTokens: number;
+  topK: number;
+  timeout: number;
   provider: string;
 }
 
@@ -89,4 +101,4 @@ export type ChatAction =
   | { type: "TOGGLE_SETTINGS" }
   | { type: "SET_SETTINGS_TAB"; payload: "profile" | "llm" }
   | { type: "CLEAR_CONVERSATION"; payload: string }
-  | { type: "SET_PROVIDERS"; payload: LlmProvider[] };
+  | { type: "SET_PROVIDERS"; payload: { providers: LlmProvider[]; defaultProvider: string } };
