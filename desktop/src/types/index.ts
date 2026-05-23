@@ -38,11 +38,8 @@ export interface ChatState {
   providers: LlmProvider[];
 }
 
-/** A single selectable model offered by an LLM provider. */
 export type LlmModel = {
-  /** Model identifier sent to the API (e.g. `"claude-sonnet-4-5"`). */
   id: string;
-  /** Human-readable display name (e.g. `"Claude Sonnet 4.5"`). */
   name: string;
 };
 
@@ -70,7 +67,7 @@ export interface AppSettings {
   apiKeySaved: boolean;
   temperature: number;
   maxTokens: number;
-  topK: number;
+  topP: number;
   timeout: number;
   provider: string;
 }

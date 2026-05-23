@@ -39,7 +39,7 @@ function createInitialState(): ChatState {
       apiKeySaved: false,
       temperature: 0.7,
       maxTokens: 2048,
-      topK: 40,
+      topP: 0.95,
       timeout: 30,
       provider: "",
     },
@@ -209,9 +209,6 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, null, createInitialState);
 
-  // Hydrates non-secret LLM settings from localStorage into context on boot
-  // so that provider, model, and tuning params are available immediately —
-  // before the LLM settings tab is ever opened.
   useEffect(() => {
     const stored = loadLlmSettings();
     if (stored !== null) {
@@ -219,8 +216,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Loads the static provider/model list from the bundled config.toml at
-  // startup so the LLM settings tab can populate its provider dropdown.
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -246,11 +241,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Returns the current `ChatContextValue`.
- *
- * @throws {Error} When called outside a `ChatProvider` tree.
- */
 export function useChatContext(): ChatContextValue {
   const ctx = useContext(ChatContext);
   if (!ctx) throw new Error("useChatContext must be used inside ChatProvider");

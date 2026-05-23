@@ -30,8 +30,6 @@ export default function InputArea() {
             id: convId,
             title: trimmed.slice(0, 50),
             messages: [],
-            // Model is read from context so it always reflects the latest
-            // ModelPicker selection without additional prop threading.
             model: state.settings.defaultModel,
             createdAt: Date.now(),
             updatedAt: Date.now(),

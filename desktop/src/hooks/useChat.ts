@@ -66,6 +66,7 @@ export function useChat() {
           messages: history,
           maxTokens: state.settings.maxTokens,
           temperature: state.settings.temperature,
+          topP: state.settings.topP,
           timeout: state.settings.timeout,
         },
         // ── onChunk ──────────────────────────────────────────────────────

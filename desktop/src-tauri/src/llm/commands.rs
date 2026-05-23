@@ -11,11 +11,6 @@ use crate::{
 /// Tauri event name broadcast to all windows for each SSE streaming chunk.
 const STREAM_CHUNK_EVENT: &str = "llm-stream-chunk";
 
-/// Sampling parameter for nucleus sampling. Hardcoded until it is exposed as
-/// a user-facing setting; the frontend's `topK` field will be corrected in a
-/// subsequent session.
-const TOP_P: f64 = 0.95;
-
 // ---------------------------------------------------------------------------
 // Shared request builder
 // ---------------------------------------------------------------------------
@@ -31,6 +26,7 @@ fn build_request(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
+    top_p: f64,
     timeout: f64,
     stream: bool,
 ) -> Result<ChatRequest, String> {
@@ -43,7 +39,7 @@ fn build_request(
         stream,
         max_tokens,
         temperature,
-        top_p: TOP_P,
+        top_p,
         stop_sequences: vec![],
         timeout,
     })
@@ -64,10 +60,11 @@ pub async fn llm_chat(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
+    top_p: f64,
     timeout: f64,
 ) -> Result<ChatResponse, String> {
     let req = build_request(
-        &app, &key_name, provider, model, messages, max_tokens, temperature, timeout, false,
+        &app, &key_name, provider, model, messages, max_tokens, temperature, top_p, timeout, false,
     )?;
     let client = LlmClient::new();
     client.chat_blocking(req).await.map_err(String::from)
@@ -84,10 +81,11 @@ pub async fn llm_chat_stream(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
+    top_p: f64,
     timeout: f64,
 ) -> Result<(), String> {
     let req = build_request(
-        &app, &key_name, provider, model, messages, max_tokens, temperature, timeout, true,
+        &app, &key_name, provider, model, messages, max_tokens, temperature, top_p, timeout, true,
     )?;
     let client = LlmClient::new();
     client

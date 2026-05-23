@@ -13,6 +13,7 @@ export type LlmStreamPayload = {
   messages: LlmMessage[];
   maxTokens: number;
   temperature: number;
+  topP: number;
   timeout: number;
 };
 
@@ -25,7 +26,6 @@ type StreamChunk = {
 // Service function
 // ---------------------------------------------------------------------------
 
-// Starts a streaming LLM call via the Tauri backend.
 export async function streamLlmResponse(
   payload: LlmStreamPayload,
   onChunk: (delta: string, isFinal: boolean) => void,
@@ -42,6 +42,7 @@ export async function streamLlmResponse(
     messages: payload.messages,
     maxTokens: payload.maxTokens,
     temperature: payload.temperature,
+    topP: payload.topP,
     timeout: payload.timeout,
   }).catch((err: unknown) => {
     onError(

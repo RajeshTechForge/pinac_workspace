@@ -3,23 +3,11 @@ import { ChevronDown } from "lucide-react";
 import { useChatContext } from "../../context/ChatContext";
 import { saveLlmSettings } from "../../services/llmSettings";
 
-/**
- * Inline model selector rendered in the input toolbar.
- *
- * Derives the list of available models from the currently selected provider
- * in global context (`state.settings.provider → state.providers[].models`).
- * Selecting a model immediately persists the choice to both context and
- * `localStorage` so the selection survives page reloads without an explicit
- * Save action.
- *
- * Renders nothing when the provider list has not yet loaded from the backend.
- */
 export default function ModelPicker() {
   const { state, dispatch } = useChatContext();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Resolve the model list for the currently selected provider.
   const currentProvider = state.providers.find(
     (p) => p.value === state.settings.provider,
   );
@@ -27,7 +15,6 @@ export default function ModelPicker() {
   const selectedId = state.settings.defaultModel;
   const current = models.find((m) => m.id === selectedId) ?? models[0];
 
-  // Close the dropdown when the user clicks outside it.
   useEffect(() => {
     function handleClickOutside(e: MouseEvent): void {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -39,24 +26,20 @@ export default function ModelPicker() {
   }, []);
 
   function handleSelect(modelId: string): void {
-    // Persist to context so every component immediately sees the new model.
     dispatch({ type: "UPDATE_SETTINGS", payload: { defaultModel: modelId } });
 
-    // Persist to localStorage so the selection survives reloads. The full
-    // settings object is written to keep the stored value consistent.
     saveLlmSettings({
       provider: state.settings.provider,
       defaultModel: modelId,
       temperature: state.settings.temperature,
       maxTokens: state.settings.maxTokens,
-      topK: state.settings.topK,
+      topP: state.settings.topP,
       timeout: state.settings.timeout,
     });
 
     setOpen(false);
   }
 
-  // Nothing to show until providers are loaded from the backend.
   if (models.length === 0) return null;
 
   return (

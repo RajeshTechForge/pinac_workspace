@@ -9,9 +9,6 @@ const API_ENDPOINT: &str = "http://127.0.0.1:8000/api/llm/chat";
 // SSE parser helper
 // ---------------------------------------------------------------------------
 
-/// Scans `s` from the beginning and returns the exclusive byte offset of the
-/// first top-level JSON object's closing `}`, or `None` when the object is
-/// incomplete.
 fn find_json_object_end(s: &str) -> Option<usize> {
     let mut depth: i32 = 0;
     let mut in_string = false;

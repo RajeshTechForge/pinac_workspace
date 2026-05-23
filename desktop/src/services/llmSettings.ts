@@ -3,7 +3,7 @@ export type LlmSettingsPayload = {
   defaultModel: string;
   temperature: number;
   maxTokens: number;
-  topK: number;
+  topP: number;
   timeout: number;
 };
 
@@ -22,14 +22,12 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
     if (typeof parsed !== "object" || parsed === null) return null;
 
     const obj = parsed as Record<string, unknown>;
-
-    // Validate every expected field before trusting the stored value.
     if (
       typeof obj["provider"] !== "string" ||
       typeof obj["defaultModel"] !== "string" ||
       typeof obj["temperature"] !== "number" ||
       typeof obj["maxTokens"] !== "number" ||
-      typeof obj["topK"] !== "number" ||
+      typeof obj["topP"] !== "number" ||
       typeof obj["timeout"] !== "number"
     ) {
       return null;
@@ -40,7 +38,7 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
       defaultModel: obj["defaultModel"],
       temperature: obj["temperature"],
       maxTokens: obj["maxTokens"],
-      topK: obj["topK"],
+      topP: obj["topP"],
       timeout: obj["timeout"],
     };
   } catch {

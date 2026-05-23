@@ -15,12 +15,9 @@ export default function LLMTab() {
   const [provider, setProvider] = useState(state.settings.provider);
   const [temperature, setTemperature] = useState(state.settings.temperature);
   const [maxTokens, setMaxTokens] = useState(state.settings.maxTokens);
-  const [topK, setTopK] = useState(state.settings.topK);
+  const [topP, setTopP] = useState(state.settings.topP);
   const [timeout, setTimeout] = useState(state.settings.timeout);
 
-  // The API key field is write-only: the value is cleared from state as soon
-  // as it has been persisted to the Tauri backend. `keyIsSaved` tracks
-  // whether an encrypted key already exists on disk for the active provider.
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [keyIsSaved, setKeyIsSaved] = useState(false);
 
@@ -45,7 +42,7 @@ export default function LLMTab() {
       setProvider(stored.provider);
       setTemperature(stored.temperature);
       setMaxTokens(stored.maxTokens);
-      setTopK(stored.topK);
+      setTopP(stored.topP);
       setTimeout(stored.timeout);
     }
   }, []);
@@ -95,7 +92,7 @@ export default function LLMTab() {
         defaultModel: modelToSave,
         temperature,
         maxTokens,
-        topK,
+        topP,
         timeout,
       });
 
@@ -106,7 +103,7 @@ export default function LLMTab() {
           defaultModel: modelToSave,
           temperature,
           maxTokens,
-          topK,
+          topP,
           timeout,
           apiKeySaved: keyIsSaved || apiKeyInput.trim().length > 0,
         },
@@ -122,7 +119,7 @@ export default function LLMTab() {
     provider !== state.settings.provider ||
     temperature !== state.settings.temperature ||
     maxTokens !== state.settings.maxTokens ||
-    topK !== state.settings.topK ||
+    topP !== state.settings.topP ||
     timeout !== state.settings.timeout ||
     apiKeyInput.trim().length > 0;
 
@@ -225,23 +222,23 @@ export default function LLMTab() {
         />
       </div>
 
-      {/* Top K */}
+      {/* Top P */}
       <div>
         <label className="block text-xs font-ui text-text-secondary mb-1.5">
-          Top K: {topK}
+          Top P: {topP.toFixed(2)}
         </label>
         <input
           type="range"
-          min="1"
-          max="100"
-          step="1"
-          value={topK}
-          onChange={(e) => setTopK(Number(e.target.value))}
+          min="0"
+          max="1"
+          step="0.05"
+          value={topP}
+          onChange={(e) => setTopP(Number(e.target.value))}
           className="w-full accent-accent h-1.5 cursor-pointer"
         />
         <div className="flex justify-between text-[10px] font-ui text-text-muted mt-0.5">
-          <span>Focused (1)</span>
-          <span>Diverse (100)</span>
+          <span>Focused (0.0)</span>
+          <span>Diverse (1.0)</span>
         </div>
       </div>
 
