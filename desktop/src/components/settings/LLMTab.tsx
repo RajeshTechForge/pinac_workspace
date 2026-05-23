@@ -20,9 +20,9 @@ export default function LLMTab() {
 
   // The API key field is write-only: the value is cleared from state as soon
   // as it has been persisted to the Tauri backend. `keyIsSaved` tracks
-  // whether an encrypted key already exists on disk.
+  // whether an encrypted key already exists on disk for the active provider.
   const [apiKeyInput, setApiKeyInput] = useState("");
-  const [keyIsSaved, setKeyIsSaved] = useState(state.settings.apiKeySaved);
+  const [keyIsSaved, setKeyIsSaved] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -31,6 +31,13 @@ export default function LLMTab() {
     value: p.value,
     label: p.label,
   }));
+
+  /** Returns the `apiKeyName` for a given provider value, or `null` when not found. */
+  function apiKeyNameFor(providerValue: string): string | null {
+    return (
+      state.providers.find((p) => p.value === providerValue)?.apiKeyName ?? null
+    );
+  }
 
   useEffect(() => {
     const stored = loadLlmSettings();
@@ -41,12 +48,20 @@ export default function LLMTab() {
       setTopK(stored.topK);
       setTimeout(stored.timeout);
     }
-
-    apiKeyExists()
-      .then((exists) => setKeyIsSaved(exists))
-      .catch(() => {
-      });
   }, []);
+
+  // Re-check key existence
+  useEffect(() => {
+    const keyName = apiKeyNameFor(provider);
+    if (!keyName) {
+      setKeyIsSaved(false);
+      return;
+    }
+    setApiKeyInput("");
+    apiKeyExists(keyName)
+      .then((exists) => setKeyIsSaved(exists))
+      .catch(() => setKeyIsSaved(false));
+  }, [provider, state.providers]);
 
   function handleProviderChange(newProvider: string): void {
     setProvider(newProvider);
@@ -57,22 +72,32 @@ export default function LLMTab() {
     setSaveError(null);
 
     try {
+      // Persist the API key first — drop the plaintext from state immediately.
       if (apiKeyInput.trim().length > 0) {
-        await saveApiKey(apiKeyInput);
+        const keyName = apiKeyNameFor(provider);
+        if (!keyName)
+          throw new Error(
+            `No apiKeyName configured for provider "${provider}".`,
+          );
+        await saveApiKey(keyName, apiKeyInput);
         setApiKeyInput("");
         setKeyIsSaved(true);
       }
 
-      // When the provider changes, reset the selected model to that
-      // provider's default so ModelPicker is not left on a foreign model.
       const modelToSave =
         provider !== state.settings.provider
-          ? (state.providers.find((p) => p.value === provider)?.defaultModel ?? state.settings.defaultModel)
+          ? (state.providers.find((p) => p.value === provider)?.defaultModel ??
+            state.settings.defaultModel)
           : state.settings.defaultModel;
 
-      // Persist non-secret settings to localStorage, preserving the model
-      // selection that ModelPicker manages independently.
-      saveLlmSettings({ provider, defaultModel: modelToSave, temperature, maxTokens, topK, timeout });
+      saveLlmSettings({
+        provider,
+        defaultModel: modelToSave,
+        temperature,
+        maxTokens,
+        topK,
+        timeout,
+      });
 
       dispatch({
         type: "UPDATE_SETTINGS",
@@ -109,6 +134,9 @@ export default function LLMTab() {
     );
   }
 
+  // Derive the key name for the currently selected provider for display use.
+  const currentKeyName = apiKeyNameFor(provider);
+
   return (
     <div className="max-w-md space-y-5">
       {/* Provider */}
@@ -123,10 +151,15 @@ export default function LLMTab() {
         />
       </div>
 
-      {/* API Key — write-only after the first save */}
+      {/* API Key — write-only after the first save, scoped per-provider */}
       <div>
         <label className="block text-xs font-ui text-text-secondary mb-1.5">
           API Key
+          {currentKeyName !== null && (
+            <span className="ml-1.5 text-[10px] font-mono text-text-muted">
+              ({currentKeyName})
+            </span>
+          )}
         </label>
         <div className="relative">
           <input
@@ -136,7 +169,9 @@ export default function LLMTab() {
             onChange={(e) => setApiKeyInput(e.target.value)}
             className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 pr-9 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100 font-mono"
             placeholder={
-              keyIsSaved ? "Enter new key to replace saved key" : "sk-..."
+              keyIsSaved
+                ? "Enter new key to replace saved key"
+                : "Enter API key…"
             }
             autoComplete="off"
           />
@@ -148,7 +183,7 @@ export default function LLMTab() {
           )}
         </div>
         <p className="mt-1 text-[10px] font-ui text-text-muted">
-          Stored encrypted on-device. Never transmitted to Pinac servers.
+          Stored encrypted on-device.
         </p>
       </div>
 

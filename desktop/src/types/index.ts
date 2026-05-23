@@ -49,6 +49,7 @@ export type LlmModel = {
 export interface LlmProvider {
   value: string;
   label: string;
+  apiKeyName: string;
   defaultModel: string;
   models: LlmModel[];
 }

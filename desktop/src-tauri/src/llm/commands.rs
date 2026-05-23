@@ -33,15 +33,22 @@ pub async fn llm_chat_stream(app: AppHandle) -> Result<(), String> {
         .map_err(String::from)
 }
 
-/// Encrypts `plaintext_key` with AES-128-GCM and stores the result in the
-/// app's private data directory.
+/// Encrypts `plaintext_key` with AES-128-GCM and stores the result in
+/// `<app_data_dir>/<key_name>.enc`.
 #[tauri::command]
-pub fn save_api_key(app: AppHandle, plaintext_key: String) -> Result<(), String> {
-    secure_storage::encrypt_and_store(&app, &plaintext_key).map_err(String::from)
+pub fn save_api_key(
+    app: AppHandle,
+    key_name: String,
+    plaintext_key: String,
+) -> Result<(), String> {
+    secure_storage::encrypt_and_store(&app, &key_name, &plaintext_key).map_err(String::from)
 }
 
-/// Returns `true` when an encrypted API key file is present on disk.
+/// Returns `true` when `<app_data_dir>/<key_name>.enc` is present on disk.
+///
+/// Does not decrypt or expose any key material. `key_name` must match the
+/// `apiKeyName` from `config.toml` for the provider being queried.
 #[tauri::command]
-pub fn api_key_exists(app: AppHandle) -> Result<bool, String> {
-    secure_storage::api_key_file_exists(&app).map_err(String::from)
+pub fn api_key_exists(app: AppHandle, key_name: String) -> Result<bool, String> {
+    secure_storage::api_key_file_exists(&app, &key_name).map_err(String::from)
 }

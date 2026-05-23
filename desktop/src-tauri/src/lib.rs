@@ -16,6 +16,7 @@ struct LlmModel {
 struct LlmProvider {
     value: String,
     label: String,
+    api_key_name: String,
     default_model: String,
     models: Vec<LlmModel>,
 }
