@@ -48,7 +48,6 @@ impl From<SecureStorageError> for String {
 // Validation
 // ---------------------------------------------------------------------------
 
-/// Validates that `key_name` is safe to use as a filesystem filename stem.
 fn validate_key_name(key_name: &str) -> Result<(), SecureStorageError> {
     if key_name.is_empty()
         || !key_name
@@ -75,18 +74,11 @@ fn app_data_dir(app: &AppHandle) -> Result<PathBuf, SecureStorageError> {
 }
 
 /// Returns the path to the shared AES-128 master key file (`master.key`).
-///
-/// A single master key is used to encrypt all per-provider API keys. The
-/// file contains 16 raw bytes and lives in the OS-managed app data directory.
 fn master_key_path(app: &AppHandle) -> Result<PathBuf, SecureStorageError> {
     Ok(app_data_dir(app)?.join("master.key"))
 }
 
 /// Returns the path to the ciphertext file for the given `key_name`.
-///
-/// Each provider's API key is stored in its own file:
-/// `<app_data_dir>/<key_name>.enc`. The file format is a single line
-/// `<nonce_base64>:<ciphertext_base64>`.
 fn ciphertext_path(app: &AppHandle, key_name: &str) -> Result<PathBuf, SecureStorageError> {
     Ok(app_data_dir(app)?.join(format!("{key_name}.enc")))
 }
@@ -97,9 +89,6 @@ fn ciphertext_path(app: &AppHandle, key_name: &str) -> Result<PathBuf, SecureSto
 
 /// Loads the 16-byte AES-128 master key from disk, generating and persisting
 /// a fresh random key the first time this is called.
-///
-/// The key file is created inside the OS-managed app data directory, which
-/// is already inaccessible to other user accounts on all major platforms.
 fn load_or_create_master_key(app: &AppHandle) -> Result<[u8; 16], SecureStorageError> {
     let path = master_key_path(app)?;
 
@@ -121,14 +110,6 @@ fn load_or_create_master_key(app: &AppHandle) -> Result<[u8; 16], SecureStorageE
 
 /// Encrypts `plaintext` with AES-128-GCM and writes the result to
 /// `<app_data_dir>/<key_name>.enc`.
-///
-/// A fresh 96-bit nonce is generated for every call so that re-encrypting
-/// the same key produces a different ciphertext each time. Overwrites any
-/// previously stored value for `key_name`.
-///
-/// # Errors
-/// Returns [`SecureStorageError::InvalidKeyName`] if `key_name` contains
-/// characters other than ASCII alphanumerics or underscores.
 pub fn encrypt_and_store(
     app: &AppHandle,
     key_name: &str,
@@ -138,8 +119,6 @@ pub fn encrypt_and_store(
 
     let key_bytes = load_or_create_master_key(app)?;
     let cipher = Aes128Gcm::new_from_slice(&key_bytes)
-        // Safety: key_bytes is exactly 16 bytes — new_from_slice only errors
-        // on wrong length, which cannot happen here.
         .expect("AES-128 key is always 16 bytes");
 
     let mut nonce_bytes = [0u8; 12];
@@ -158,13 +137,6 @@ pub fn encrypt_and_store(
 
 /// Reads `<app_data_dir>/<key_name>.enc`, decrypts it with AES-128-GCM, and
 /// returns the plaintext API key.
-///
-/// Returns an error if the file is absent, malformed, or if decryption fails
-/// (e.g. the master key was rotated or the ciphertext was tampered with).
-///
-/// Unused until the LLM commands are wired to forward the key to the API
-/// gateway in the next implementation session.
-#[allow(dead_code)]
 pub fn load_and_decrypt(
     app: &AppHandle,
     key_name: &str,
@@ -196,9 +168,6 @@ pub fn load_and_decrypt(
 }
 
 /// Returns `true` when `<app_data_dir>/<key_name>.enc` exists on disk.
-///
-/// Does not decrypt or expose any key material — callers learn only whether
-/// a key has been saved for `key_name`, not its value.
 pub fn api_key_file_exists(
     app: &AppHandle,
     key_name: &str,

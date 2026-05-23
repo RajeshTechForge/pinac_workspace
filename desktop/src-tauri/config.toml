@@ -32,8 +32,8 @@ models = [
 ]
 
 [[llm.providers]]
-value = "google"
-label = "Google"
+value = "gemini"
+label = "Gemini"
 apiKeyName = "GEMINI_API_KEY"
 defaultModel = "gemini-3.1-flash-lite"
 models = [
