@@ -45,6 +45,7 @@ from ..base import (
 )
 from ..exceptions import (
     LLMAuthenticationError,
+    LLMError,
     LLMProviderError,
     LLMProviderInitError,
     LLMRateLimitError,
@@ -107,14 +108,8 @@ class AnthropicConfig:
 
     @classmethod
     def from_dict(cls, cfg: dict[str, Any]) -> "AnthropicConfig":
-        """Build from the raw config slice.
+        """Build from the raw config slice."""
 
-        Args:
-            cfg: The configuration dictionary.
-
-        Returns:
-            An AnthropicConfig instance.
-        """
         return cls(
             api_key=cfg["api_key"],
             model=cfg.get("model", _DEFAULT_MODEL),
@@ -195,14 +190,10 @@ class AnthropicProvider(LLMProvider):
                 base_url=self._cfg.base_url,
                 max_retries=self._cfg.max_retries,
                 default_headers=self._cfg.extra_headers or None,
-                # Bypasses client-level timeout in favor of per-request asyncio.wait_for.
-                # Ensures consistent LLMTimeoutError mapping.
             )
         except Exception as exc:
             raise LLMProviderInitError(
-                "Failed to create AsyncAnthropic client.",
-                provider="anthropic",
-                details={"error": str(exc)},
+                "Failed to create AsyncAnthropic client.", provider="anthropic"
             ) from exc
 
         # Probes credentials via token count payload.
@@ -215,15 +206,7 @@ class AnthropicProvider(LLMProvider):
                 timeout=_HEALTH_CHECK_TIMEOUT_S,
             )
         except anthropic.AuthenticationError as exc:
-            raise LLMProviderInitError(
-                "Anthropic API key is invalid or revoked.",
-                provider="anthropic",
-                details={"error": str(exc)},
-            ) from exc
-        except Exception as exc:
-            logger.warning(
-                "AnthropicProvider credential probe failed (non-fatal): %s", exc
-            )
+            raise self._map_anthropic_error(exc) from exc
 
         self._initialized = True
         logger.info("AnthropicProvider initialised successfully.")
@@ -326,7 +309,6 @@ class AnthropicProvider(LLMProvider):
                 f"Anthropic request timed out after {elapsed:.1f}s (limit={timeout}s)",
                 elapsed_s=elapsed,
                 provider="anthropic",
-                details={"error": str(exc)},
             ) from exc
         except Exception as exc:
             raise self._map_anthropic_error(exc) from exc
@@ -378,14 +360,6 @@ class AnthropicProvider(LLMProvider):
                 # Retrieves final authoritative message for usage statistics.
                 final_msg: AnthropicMessage = await stream_mgr.get_final_message()
 
-        except anthropic.APITimeoutError as exc:
-            elapsed = time.monotonic() - start
-            raise LLMTimeoutError(
-                f"Anthropic stream timed out after {elapsed:.1f}s",
-                elapsed_s=elapsed,
-                provider="anthropic",
-                details={"error": str(exc)},
-            ) from exc
         except Exception as exc:
             raise self._map_anthropic_error(exc) from exc
 
@@ -481,9 +455,7 @@ class AnthropicProvider(LLMProvider):
             )
         except Exception as exc:
             raise LLMProviderError(
-                "Anthropic count_tokens failed.",
-                provider="anthropic",
-                details={"error": str(exc)},
+                "Anthropic count_tokens failed.", provider="anthropic"
             ) from exc
         return result.input_tokens
 
@@ -550,55 +522,206 @@ class AnthropicProvider(LLMProvider):
         )
 
     @staticmethod
-    def _map_anthropic_error(exc: Exception) -> Exception:
-        """Map an Anthropic SDK exception to the most specific LLMError subtype."""
+    def _safe_body_message(exc: anthropic.APIStatusError) -> str:
+        """Extract the human-readable error message from the Anthropic response body."""
+        try:
+            return str(exc.body["error"]["message"])
+        except (TypeError, KeyError):
+            return ""
 
-        if isinstance(exc, anthropic.RateLimitError):
-            return LLMRateLimitError(
-                "Anthropic rate limit exceeded",
-                retry_after_s=AnthropicProvider._parse_retry_after(exc),
-                provider="anthropic",
-                details={"error": str(exc)},
+    @staticmethod
+    def _map_anthropic_error(exc: Exception) -> LLMError:
+        """Map any Anthropic SDK exception to the most specific LLMError subtype.
+
+        Covers the full SDK hierarchy. Evaluation order matters for subclass
+        relationships: "APITimeoutError" is checked before "APIConnectionError"
+        (it subclasses it)
+
+        Args:
+            exc: Any exception raised by the Anthropic SDK.
+
+        Returns:
+            The appropriate LLMError subclass instance.
+        """
+
+        if isinstance(exc, anthropic.APITimeoutError):
+            logger.warning(
+                "Anthropic request timed out.",
+                extra={"exc_type": type(exc).__name__},
             )
+            return LLMTimeoutError(
+                "The request to Anthropic timed out. Please try again.",
+                provider="anthropic",
+            )
+
+        if isinstance(exc, anthropic.APIConnectionError):
+            logger.warning(
+                "Anthropic connection error.",
+                extra={"exc_type": type(exc).__name__},
+            )
+            return LLMProviderError(
+                "Could not reach the Anthropic API. Check your network connection.",
+                provider="anthropic",
+            )
+
+        if isinstance(exc, anthropic.AuthenticationError):
+            logger.warning(
+                "Anthropic authentication failed.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+            return LLMAuthenticationError(
+                "Anthropic API credentials are invalid or have been revoked.",
+                provider="anthropic",
+            )
+
+        if isinstance(exc, anthropic.PermissionDeniedError):
+            logger.warning(
+                "Anthropic permission denied.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+            return LLMAuthenticationError(
+                "Access denied by Anthropic. The API key lacks permission for this operation.",
+                status_code=exc.status_code,
+                provider="anthropic",
+            )
+
+        if isinstance(exc, anthropic.NotFoundError):
+            logger.warning(
+                "Anthropic resource not found.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+            return LLMProviderError(
+                "The requested Anthropic model or resource was not found.",
+                status_code=exc.status_code,
+                provider="anthropic",
+            )
+
         if isinstance(exc, anthropic.BadRequestError):
-            msg_lower = exc.message.lower()
-            if "too long" in msg_lower or "token" in msg_lower:
+            body_msg = AnthropicProvider._safe_body_message(exc)
+            logger.warning(
+                "Anthropic bad request.",
+                extra={"status_code": exc.status_code, "body_msg": body_msg},
+            )
+            if "too long" in body_msg.lower() or "token" in body_msg.lower():
                 return LLMTokenLimitError(
-                    "Prompt exceeds Anthropic context window.",
+                    "The prompt exceeds the model's context window."
+                    " Reduce the input size and retry.",
                     context_limit=_MAX_CONTEXT_TOKENS,
+                    status_code=exc.status_code,
                     provider="anthropic",
-                    details={"error": str(exc)},
                 )
             return LLMProviderError(
-                f"Anthropic bad request: {exc.message}",
+                "Anthropic rejected the request due to invalid input.",
                 status_code=exc.status_code,
                 provider="anthropic",
-                details={"error": str(exc)},
             )
-        if isinstance(exc, anthropic.AuthenticationError):
-            return LLMAuthenticationError(
-                f"Anthropic authentication failed: {exc.message}",
+
+        if isinstance(exc, anthropic.UnprocessableEntityError):
+            logger.warning(
+                "Anthropic unprocessable entity.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+            return LLMProviderError(
+                "Anthropic could not process the request."
+                " Verify the input format and parameters.",
+                status_code=exc.status_code,
                 provider="anthropic",
-                details={"error": str(exc)},
             )
+
+        if isinstance(exc, anthropic.RateLimitError):
+            body_msg = AnthropicProvider._safe_body_message(exc)
+            retry_after = AnthropicProvider._parse_retry_after(exc)
+            logger.warning(
+                "Anthropic rate limit exceeded.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": body_msg,
+                    "retry_after_s": retry_after,
+                },
+            )
+            if "acceleration" in body_msg.lower():
+                user_msg = (
+                    "Anthropic detected a sudden traffic spike on this account."
+                    " Wait before retrying."
+                )
+            elif "request tokens" in body_msg.lower():
+                user_msg = (
+                    "Input token volume per minute exceeded."
+                    " Reduce prompt size or wait before retrying."
+                )
+            else:
+                user_msg = "Anthropic request rate limit exceeded. Retry after the indicated delay."
+            return LLMRateLimitError(
+                user_msg,
+                status_code=exc.status_code,
+                retry_after_s=retry_after,
+                provider="anthropic",
+            )
+
+        if isinstance(exc, anthropic.InternalServerError):
+            logger.warning(
+                "Anthropic internal server error.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+
+            if isinstance(exc, anthropic._exceptions.OverloadedError):
+                emsg = "Anthropic's infrastructure is currently overloaded. Retry after a short delay."
+
+            elif isinstance(exc, anthropic._exceptions.ServiceUnavailableError):
+                emsg = "Anthropic's service is currently unavailable. Retry after a short delay."
+
+            else:
+                emsg = "Anthropic encountered an internal server error. Retry after a short delay."
+
+            return LLMProviderError(
+                emsg,
+                status_code=exc.status_code,
+                provider="anthropic",
+            )
+
         if isinstance(exc, anthropic.APIStatusError):
+            logger.warning(
+                "Anthropic API status error.",
+                extra={
+                    "status_code": exc.status_code,
+                    "body_msg": AnthropicProvider._safe_body_message(exc),
+                },
+            )
+
+            if exc.status_code == 402:
+                emsg = "Anthropic billing error."
+
+            else:
+                emsg = "An unexpected Anthropic API error occurred."
+
             return LLMProviderError(
-                f"Anthropic API error: {exc.message}",
+                emsg,
                 status_code=exc.status_code,
                 provider="anthropic",
-                details={"error": str(exc)},
             )
-        if isinstance(exc, anthropic.APIConnectionError):
-            return LLMProviderError(
-                "Anthropic connection error.",
-                provider="anthropic",
-                details={"error": str(exc)},
-            )
-        # Maps SDK errors not explicitly enumerated.
+
+        logger.warning(
+            "Unexpected error from Anthropic provider.",
+            extra={"exc_type": type(exc).__name__},
+        )
         return LLMProviderError(
-            f"Anthropic unexpected error ({type(exc).__name__})",
+            "An unexpected error occurred while communicating with Anthropic.",
             provider="anthropic",
-            details={"error": str(exc)},
         )
 
     @staticmethod
@@ -609,7 +732,8 @@ class AnthropicProvider(LLMProvider):
             exc: The Anthropic rate limit exception.
 
         Returns:
-            The retry after delay duration, or None if unparseable.
+            The retry-after delay in seconds, or None if the header is absent
+            or unparseable.
         """
         try:
             header_val = exc.response.headers.get("retry-after")

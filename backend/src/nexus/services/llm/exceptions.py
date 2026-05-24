@@ -17,26 +17,23 @@ class LLMError(NexusError):
     def __init__(
         self,
         message: str,
-        status_code: int | None = None,
+        status_code: int | None,
         provider: str | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
-        if provider is not None:
-            details = details or {}
-            details["provider"] = provider
 
-        if status_code is None:
-            status_code = 500
+        details = {"provider": provider} if provider else None
 
         super().__init__(
-            status_code=status_code,
-            message=f"[LLMError]: {message}",
+            status_code=status_code if status_code is not None else 500,
+            message=message,
+            code="LLM_ERROR",
             details=details,
             **kwargs,
         )
+        self.message = message
         self.provider = provider
-        self.extra = kwargs
+        self.status_code = status_code
 
 
 class LLMProviderInitError(LLMError):
@@ -47,48 +44,36 @@ class LLMProviderInitError(LLMError):
         message: str,
         status_code: int | None = None,
         provider: str | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
         super().__init__(
-            message=f"[LLMProviderInitError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
 
 
 class LLMProviderError(LLMError):
-    """Generic provider-side failure.
-
-    Attributes:
-        status_code: The HTTP status code from the provider.
-    """
+    """Generic provider-side failure."""
 
     def __init__(
         self,
         message: str,
         status_code: int | None = None,
         provider: str | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
         super().__init__(
-            message=f"[LLMProviderError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
 
 
 class LLMRateLimitError(LLMError):
-    """Exception raised for HTTP 429 or quota limit errors.
-
-    Attributes:
-        retry_after_s: The number of seconds to wait before retrying.
-    """
+    """Exception raised for HTTP 429 or quota limit errors."""
 
     def __init__(
         self,
@@ -96,29 +81,20 @@ class LLMRateLimitError(LLMError):
         status_code: int | None = None,
         provider: str | None = None,
         retry_after_s: float | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
-        if retry_after_s is not None:
-            details = details or {}
-            details["retry_after_s"] = retry_after_s
 
         super().__init__(
-            message=f"[LLMRateLimitError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
         self.retry_after_s = retry_after_s
 
 
 class LLMTimeoutError(LLMError):
-    """Exception raised when a request exceeds its maximum execution time.
-
-    Attributes:
-        elapsed_s: The elapsed time in seconds before the timeout occurred.
-    """
+    """Exception raised when a request exceeds its maximum execution time."""
 
     def __init__(
         self,
@@ -126,30 +102,20 @@ class LLMTimeoutError(LLMError):
         status_code: int | None = None,
         provider: str | None = None,
         elapsed_s: float | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
-        if elapsed_s is not None:
-            details = details or {}
-            details["elapsed_s"] = elapsed_s
 
         super().__init__(
-            message=f"[LLMTimeoutError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
         self.elapsed_s = elapsed_s
 
 
 class LLMTokenLimitError(LLMError):
-    """Exception raised when a request exceeds the model's token limits.
-
-    Attributes:
-        token_count: The calculated token count for the problem request.
-        context_limit: The maximum allowable tokens for the requested model.
-    """
+    """Exception raised when a request exceeds the model's token limits."""
 
     def __init__(
         self,
@@ -158,21 +124,13 @@ class LLMTokenLimitError(LLMError):
         provider: str | None = None,
         token_count: int | None = None,
         context_limit: int | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
-        if token_count or context_limit is not None:
-            details = details or {}
-            if token_count is not None:
-                details["token_count"] = token_count
-            if context_limit is not None:
-                details["context_limit"] = context_limit
 
         super().__init__(
-            message=f"[LLMTokenLimitError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
         self.token_count = token_count
@@ -187,14 +145,13 @@ class LLMContentFilterError(LLMError):
         message: str,
         status_code: int | None = None,
         provider: str | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
+
         super().__init__(
-            message=f"[LLMContentFilterError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )
 
@@ -207,13 +164,12 @@ class LLMAuthenticationError(LLMError):
         message: str,
         status_code=401,
         provider: str | None = None,
-        details: dict | None = None,
         **kwargs,
     ) -> None:
+
         super().__init__(
-            message=f"[LLMAuthenticationError] {message}",
+            message=message,
             status_code=status_code,
             provider=provider,
-            details=details,
             **kwargs,
         )

@@ -29,12 +29,10 @@ class NexusError(Exception):
         details: dict | None = None,
         status_code: int = 500,
     ):
-        if details:
-            details.pop("error")  # Remove nested error details if present
-
         self.message = message
         self.code = code
-        self.details = details
+        if details:
+            self.details = details
         self.status_code = status_code
         super().__init__(self.message)
 

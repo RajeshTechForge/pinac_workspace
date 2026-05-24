@@ -259,9 +259,7 @@ class OpenAIProvider(LLMProvider):
             )
         except Exception as exc:
             raise LLMProviderInitError(
-                "Failed to create AsyncOpenAI client.",
-                provider="openai",
-                details={"error": str(exc)},
+                "Failed to create AsyncOpenAI client.", provider="openai"
             ) from exc
 
         # Validate credentials via a lightweight list call that consumes no tokens.
@@ -272,9 +270,7 @@ class OpenAIProvider(LLMProvider):
             )
         except AuthenticationError as exc:
             raise LLMProviderInitError(
-                "OpenAI-compatible API key is invalid or revoked.",
-                provider="openai",
-                details={"error": str(exc)},
+                "OpenAI-compatible API key is invalid or revoked.", provider="openai"
             ) from exc
         except Exception as exc:
             # Non-fatal: some NVIDIA NIM / proxy endpoints restrict model listing.
@@ -322,9 +318,7 @@ class OpenAIProvider(LLMProvider):
             )
         except Exception as exc:
             raise LLMProviderInitError(
-                "Failed to create AsyncOpenAI client.",
-                provider="openai",
-                details={"error": str(exc)},
+                "Failed to create AsyncOpenAI client.", provider="openai"
             ) from exc
 
         self._initialized = True
@@ -385,7 +379,6 @@ class OpenAIProvider(LLMProvider):
                 f"OpenAI request timed out after {elapsed:.1f}s (limit={timeout}s)",
                 elapsed_s=elapsed,
                 provider="openai",
-                details={"error": str(exc)},
             ) from exc
         except Exception as exc:
             raise self._map_openai_error(exc) from exc
@@ -476,7 +469,6 @@ class OpenAIProvider(LLMProvider):
                 f"OpenAI stream timed out after {elapsed:.1f}s",
                 elapsed_s=elapsed,
                 provider="openai",
-                details={"error": str(exc)},
             ) from exc
         except Exception as exc:
             raise self._map_openai_error(exc) from exc
@@ -622,14 +614,11 @@ class OpenAIProvider(LLMProvider):
                 f"OpenAI endpoint rate limit exceeded: {exc.message}",
                 retry_after_s=OpenAIProvider._parse_retry_after(exc),
                 provider="openai",
-                details={"error": str(exc)},
             )
 
         if isinstance(exc, AuthenticationError):
             return LLMAuthenticationError(
-                f"OpenAI authentication failed: {exc.message}",
-                provider="openai",
-                details={"error": str(exc)},
+                f"OpenAI authentication failed: {exc.message}", provider="openai"
             )
 
         if isinstance(exc, BadRequestError):
@@ -644,13 +633,11 @@ class OpenAIProvider(LLMProvider):
                     f"Prompt exceeds model context window: {exc.message}",
                     context_limit=_MAX_CONTEXT_TOKENS,
                     provider="openai",
-                    details={"error": str(exc)},
                 )
             return LLMProviderError(
                 f"OpenAI  bad request: {exc.message}",
                 status_code=exc.status_code,
                 provider="openai",
-                details={"error": str(exc)},
             )
 
         if isinstance(exc, APIStatusError):
@@ -658,28 +645,17 @@ class OpenAIProvider(LLMProvider):
                 f"OpenAI API error: {exc.message}",
                 status_code=exc.status_code,
                 provider="openai",
-                details={"error": str(exc)},
             )
 
         if isinstance(exc, APITimeoutError):
-            return LLMTimeoutError(
-                "OpenAI request timed out.",
-                provider="openai",
-                details={"error": str(exc)},
-            )
+            return LLMTimeoutError("OpenAI request timed out.", provider="openai")
 
         if isinstance(exc, APIConnectionError):
-            return LLMProviderError(
-                "OpenAI connection error.",
-                provider="openai",
-                details={"error": str(exc)},
-            )
+            return LLMProviderError("OpenAI connection error.", provider="openai")
 
         # Catch-all for any SDK error not explicitly enumerated above.
         return LLMProviderError(
-            f"OpenAI unexpected error ({type(exc).__name__}): {exc}",
-            provider="openai",
-            details={"error": str(exc)},
+            f"OpenAI unexpected error ({type(exc).__name__}): {exc}", provider="openai"
         )
 
     @staticmethod

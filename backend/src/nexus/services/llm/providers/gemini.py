@@ -219,9 +219,7 @@ class GeminiProvider(LLMProvider):
                 )
         except Exception as exc:
             raise LLMProviderInitError(
-                "Failed to create google-genai Client.",
-                provider="gemini",
-                details={"error": str(exc)},
+                "Failed to create google-genai Client.", provider="gemini"
             ) from exc
 
         # Probes credentials via zero-inference token check.
@@ -238,7 +236,6 @@ class GeminiProvider(LLMProvider):
                 raise LLMProviderInitError(
                     f"Gemini API key is invalid or lacks permission: {exc.message}",
                     provider="gemini",
-                    details={"error": str(exc)},
                 ) from exc
             logger.warning(
                 "GeminiProvider credential probe returned %s (non-fatal): %s",
@@ -299,9 +296,7 @@ class GeminiProvider(LLMProvider):
                 )
         except Exception as exc:
             raise LLMProviderInitError(
-                "Failed to create google-genai Client.",
-                provider="gemini",
-                details={"error": str(exc)},
+                "Failed to create google-genai Client.", provider="gemini"
             ) from exc
 
         self._initialized = True
@@ -357,7 +352,6 @@ class GeminiProvider(LLMProvider):
                 f"Gemini request timed out after {elapsed:.1f}s (limit={timeout}s)",
                 elapsed_s=elapsed,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
         except genai_errors.ClientError as exc:
             raise self._map_client_error(exc) from exc
@@ -366,14 +360,12 @@ class GeminiProvider(LLMProvider):
                 f"Gemini server error: {exc.message}",
                 status_code=exc.code,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
         except genai_errors.APIError as exc:
             raise LLMProviderError(
                 f"Gemini API error: {exc.message}",
                 status_code=exc.code,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
 
         return self._build_response(raw, request, start)
@@ -453,7 +445,6 @@ class GeminiProvider(LLMProvider):
                 f"Gemini stream timed out after {elapsed:.1f}s",
                 elapsed_s=elapsed,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
         except genai_errors.ClientError as exc:
             raise self._map_client_error(exc) from exc
@@ -462,14 +453,12 @@ class GeminiProvider(LLMProvider):
                 f"Gemini server error (stream): {exc.message}",
                 status_code=exc.code,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
         except genai_errors.APIError as exc:
             raise LLMProviderError(
                 f"Gemini API error (stream): {exc.message}",
                 status_code=exc.code,
                 provider="gemini",
-                details={"error": str(exc)},
             ) from exc
 
         # Raises content-filter error after stream if safety policies block all output.
@@ -703,26 +692,16 @@ class GeminiProvider(LLMProvider):
 
         if code in {401, 403}:
             return LLMAuthenticationError(
-                "Gemini authentication failed.",
-                provider="gemini",
-                details={"error": str(exc)},
+                "Gemini authentication failed.", provider="gemini"
             )
         if code == 429:
-            return LLMRateLimitError(
-                "Gemini rate limit exceeded.",
-                provider="gemini",
-                details={"error": str(exc)},
-            )
+            return LLMRateLimitError("Gemini rate limit exceeded.", provider="gemini")
         if code == 400 and ("token" in message.lower() or "context" in message.lower()):
             return LLMTokenLimitError(
                 "Prompt exceeds Gemini context window.",
                 context_limit=_MAX_CONTEXT_TOKENS,
                 provider="gemini",
-                details={"error": str(exc)},
             )
         return LLMProviderError(
-            f"Gemini client error: {message}",
-            status_code=code,
-            provider="gemini",
-            details={"error": str(exc)},
+            f"Gemini client error: {message}", status_code=code, provider="gemini"
         )
