@@ -1,5 +1,6 @@
 import MessageMeta from "./MessageMeta";
 import CodeBlock from "./CodeBlock";
+import MarkdownContent from "./MarkdownContent";
 import type { Message } from "../../types";
 
 interface MessageBubbleProps {
@@ -59,7 +60,10 @@ export default function MessageBubble({ message, isStreaming, streamingText }: M
           </span>
         </div>
         <div className="text-[14px] font-ui leading-relaxed text-text-primary">
-          {renderContent(displayContent)}
+          {isUser
+            ? renderContent(displayContent)
+            : <MarkdownContent content={displayContent} />
+          }
           {isStreaming && (
             <span className="inline-block w-0.5 h-4 ml-0.5 bg-accent animate-pulse align-text-bottom" />
           )}
