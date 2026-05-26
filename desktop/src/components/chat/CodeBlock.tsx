@@ -1,5 +1,39 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Copy, Check } from "lucide-react";
+import hljs from "highlight.js/lib/core";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
+import xml from "highlight.js/lib/languages/xml";
+import css from "highlight.js/lib/languages/css";
+import sql from "highlight.js/lib/languages/sql";
+import yaml from "highlight.js/lib/languages/yaml";
+import markdown from "highlight.js/lib/languages/markdown";
+import rust from "highlight.js/lib/languages/rust";
+
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("javascript", typescript);
+hljs.registerLanguage("js", typescript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("shell", bash);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("svg", xml);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("scss", css);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("yaml", yaml);
+hljs.registerLanguage("yml", yaml);
+hljs.registerLanguage("markdown", markdown);
+hljs.registerLanguage("md", markdown);
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("rs", rust);
 
 interface CodeBlockProps {
   code: string;
@@ -9,13 +43,28 @@ interface CodeBlockProps {
 export default function CodeBlock({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
+  const highlighted = useMemo<string>(() => {
+    if (!code) return "";
+    try {
+      if (language) {
+        const lang = hljs.getLanguage(language);
+        if (lang) {
+          return hljs.highlight(code, { language, ignoreIllegals: true }).value;
+        }
+      }
+      return hljs.highlightAuto(code).value;
+    } catch {
+      return code;
+    }
+  }, [code, language]);
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard not available
+      console.error("Failed to copy code");
     }
   }
 
@@ -34,9 +83,10 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
         </button>
       </div>
       <pre className="bg-surface-3 border border-border rounded-b-sm overflow-x-auto">
-        <code className="block px-3 py-2.5 text-[13px] font-mono leading-relaxed text-text-primary whitespace-pre">
-          {code}
-        </code>
+        <code
+          className="block px-3 py-2.5 text-[13px] font-mono leading-relaxed whitespace-pre text-text-primary"
+          dangerouslySetInnerHTML={{ __html: highlighted }}
+        />
       </pre>
     </div>
   );

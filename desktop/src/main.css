@@ -43,6 +43,42 @@
   ::selection {
     background-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
+
+  /* highlight.js — One Dark palette matching surface theme */
+  .hljs { color: var(--color-text-primary); }
+  .hljs-keyword,
+  .hljs-literal,
+  .hljs-symbol,
+  .hljs-name { color: #c678dd; }
+  .hljs-built_in,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-id { color: #e5c07b; }
+  .hljs-number { color: #d19a66; }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-attribute { color: #98c379; }
+  .hljs-comment,
+  .hljs-quote,
+  .hljs-deletion { color: #5c6370; }
+  .hljs-title,
+  .hljs-section,
+  .hljs-function { color: #61afef; }
+  .hljs-variable,
+  .hljs-template-variable { color: #d19a66; }
+  .hljs-params { color: var(--color-text-primary); }
+  .hljs-operator,
+  .hljs-selector-pseudo { color: #56b6c2; }
+  .hljs-meta { color: #e5c07b; }
+  .hljs-doctag { color: #c678dd; }
+  .hljs-selector { color: #e06c75; }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: 600; }
+  .hljs-link { text-decoration: underline; }
+  .hljs-bullet { color: #56b6c2; }
+  .hljs-code { color: #98c379; }
+  .hljs-formula { color: #61afef; }
 }
 
 @layer utilities {

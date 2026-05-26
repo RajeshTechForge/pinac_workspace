@@ -35,7 +35,7 @@ function MarkdownContent({ content }: MarkdownContentProps) {
           },
           pre({ children, node, ...props }) {
             const child = Children.only(children) as ReactElement;
-            if (child?.type === CodeBlock) {
+            if (typeof child.type !== "string") {
               return <>{children}</>;
             }
             return (
