@@ -4,9 +4,9 @@ import ConversationItem from "./ConversationItem";
 import ScrollArea from "../ui/ScrollArea";
 import Divider from "../ui/Divider";
 import { useChatContext } from "../../context/ChatContext";
-import type { Conversation, ConversationGroup } from "../../types";
+import type { ConversationMeta, ConversationGroup } from "../../types";
 
-function getGroup(conv: Conversation): ConversationGroup {
+function getGroup(conv: ConversationMeta): ConversationGroup {
   const diff = Date.now() - conv.updatedAt;
   const day = 86_400_000;
   if (diff < day) return "today";
@@ -37,7 +37,7 @@ export default function ConversationList() {
     const pinned = filtered.filter((c) => c.pinned);
     const unpinned = filtered.filter((c) => !c.pinned);
 
-    const groups = new Map<ConversationGroup, Conversation[]>();
+    const groups = new Map<ConversationGroup, ConversationMeta[]>();
     for (const g of GROUP_ORDER) groups.set(g, []);
     for (const c of unpinned) {
       const g = getGroup(c);

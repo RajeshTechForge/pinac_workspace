@@ -2,49 +2,39 @@ import { useChatContext } from "../../context/ChatContext";
 import { useChat } from "../../hooks/useChat";
 import MessageList from "./MessageList";
 import EmptyState from "./EmptyState";
+import type { ConversationMeta } from "../../types";
 
 export default function ChatArea() {
   const { state, dispatch } = useChatContext();
   const { sendMessage } = useChat();
 
-  const activeConv = state.conversations.find(
-    (c) => c.id === state.activeConversationId,
-  );
-
   function handleSuggestion(text: string) {
     let convId = state.activeConversationId;
 
-    if (!activeConv || activeConv.messages.length > 0) {
+    // If no active conversation exists, create an in-session placeholder.
+    if (!convId) {
       convId = `conv-${Date.now()}`;
-      dispatch({
-        type: "ADD_CONVERSATION",
-        payload: {
-          id: convId,
-          title: text.slice(0, 50),
-          messages: [],
-          model: state.settings.defaultModel,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          pinned: false,
-        },
-      });
-    } else if (convId) {
-      dispatch({
-        type: "RENAME_CONVERSATION",
-        payload: { id: convId, title: text.slice(0, 50) }
-      });
+      const newMeta: ConversationMeta = {
+        id: convId,
+        title: "New conversation",
+        model: state.settings.defaultModel,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        pinned: false,
+      };
+      dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
     }
 
-    sendMessage(text, convId ?? undefined);
+    sendMessage(text, convId);
   }
 
-  if (!activeConv || activeConv.messages.length === 0) {
+  if (state.activeMessages.length === 0 && !state.messagesLoading) {
     return <EmptyState onSelectSuggestion={handleSuggestion} />;
   }
 
   return (
     <MessageList
-      messages={activeConv.messages}
+      messages={state.activeMessages}
       isStreaming={state.isStreaming}
       streamingMessageId={state.streamingMessageId}
       streamingText={state.streamingText}

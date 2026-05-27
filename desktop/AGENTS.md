@@ -87,6 +87,9 @@ Code is not done until it can be reviewed, tested, and deployed as-is without mo
 ├── src-tauri/
 │   ├── capabilities/default.json # Tauri capabilities manifest
 │   ├── src/
+│   │   ├── llm/            # Manages LLMs requests
+│   │   ├── db/             # Manages SQLite database
+│   │   ├── secure_storage.rs   # For storing api-keys securely
 │   │   ├── lib.rs
 │   │   └── main.rs         # Rust entry point and command definitions
 │   ├── cargo.toml          # Rust dependencies and build config

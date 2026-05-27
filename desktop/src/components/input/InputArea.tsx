@@ -3,6 +3,7 @@ import PromptInput from "./PromptInput";
 import InputToolbar from "./InputToolbar";
 import { useChatContext } from "../../context/ChatContext";
 import { useChat } from "../../hooks/useChat";
+import type { ConversationMeta } from "../../types";
 
 export default function InputArea() {
   const { state, dispatch } = useChatContext();
@@ -14,29 +15,24 @@ export default function InputArea() {
     if (!trimmed || isStreaming) return;
 
     let convId = state.activeConversationId;
-    const activeConv = state.conversations.find((c) => c.id === convId);
+    const activeMeta = state.conversations.find((c) => c.id === convId);
 
-    if (!convId || !activeConv || activeConv.messages.length === 0) {
-      if (convId && activeConv) {
-        dispatch({
-          type: "RENAME_CONVERSATION",
-          payload: { id: convId, title: trimmed.slice(0, 50) },
-        });
-      } else {
-        convId = `conv-${Date.now()}`;
-        dispatch({
-          type: "ADD_CONVERSATION",
-          payload: {
-            id: convId,
-            title: trimmed.slice(0, 50),
-            messages: [],
-            model: state.settings.defaultModel,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            pinned: false,
-          },
-        });
-      }
+    // If no conversation is active, or the active one already has messages
+    // (determined by whether it exists in the DB — new in-session conversations
+    // also show in the sidebar immediately via APPEND_CONVERSATION_META), create
+    // a new conversation placeholder. The real title is derived and persisted
+    // by useChat after the first exchange completes.
+    if (!convId || !activeMeta) {
+      convId = `conv-${Date.now()}`;
+      const newMeta: ConversationMeta = {
+        id: convId,
+        title: "New conversation",
+        model: state.settings.defaultModel,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        pinned: false,
+      };
+      dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
     }
 
     sendMessage(trimmed, convId);

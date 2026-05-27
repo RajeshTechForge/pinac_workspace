@@ -1,6 +1,8 @@
 use std::fs;
+use std::sync::Mutex;
 use tauri::Manager;
 
+mod db;
 mod llm;
 mod secure_storage;
 
@@ -53,12 +55,26 @@ fn read_config(app: tauri::AppHandle) -> Result<AppConfig, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            // Initialize the SQLite database and register its connection
+            let conn = db::init::init_db(app.handle())
+                .map_err(|e| format!("Database initialization failed: {e}"))?;
+            app.manage(Mutex::new(conn));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             read_config,
             llm::commands::llm_chat,
             llm::commands::llm_chat_stream,
             llm::commands::save_api_key,
             llm::commands::api_key_exists,
+            db::commands::db_list_conversations,
+            db::commands::db_get_messages,
+            db::commands::db_save_pair,
+            db::commands::db_delete_conversation,
+            db::commands::db_toggle_pin,
+            db::commands::db_rename_conversation,
+            db::commands::db_clear_messages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

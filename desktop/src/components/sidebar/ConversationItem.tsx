@@ -1,11 +1,12 @@
 import { Pin, PinOff, Trash2 } from "lucide-react";
 import { useChatContext } from "../../context/ChatContext";
-import type { Conversation } from "../../types";
+import { deleteConversation, togglePin } from "../../services/conversation";
+import type { ConversationMeta } from "../../types";
 
-interface ConversationItemProps {
-  conversation: Conversation;
+type ConversationItemProps = {
+  conversation: ConversationMeta;
   isActive: boolean;
-}
+};
 
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts;
@@ -19,7 +20,10 @@ function formatRelativeTime(ts: number): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-export default function ConversationItem({ conversation, isActive }: ConversationItemProps) {
+export default function ConversationItem({
+  conversation,
+  isActive,
+}: ConversationItemProps) {
   const { dispatch } = useChatContext();
 
   function select() {
@@ -28,12 +32,24 @@ export default function ConversationItem({ conversation, isActive }: Conversatio
 
   function pin(e: React.MouseEvent) {
     e.stopPropagation();
-    dispatch({ type: "PIN_CONVERSATION", payload: conversation.id });
+    dispatch({
+      type: "PATCH_CONVERSATION_META",
+      payload: { id: conversation.id, pinned: !conversation.pinned },
+    });
+    void togglePin(conversation.id).catch((err: unknown) => {
+      console.error(
+        `Failed to toggle pin for conversation ${conversation.id}:`,
+        err,
+      );
+    });
   }
 
   function remove(e: React.MouseEvent) {
     e.stopPropagation();
     dispatch({ type: "DELETE_CONVERSATION", payload: conversation.id });
+    void deleteConversation(conversation.id).catch((err: unknown) => {
+      console.error(`Failed to delete conversation ${conversation.id}:`, err);
+    });
   }
 
   const activeClass = isActive
@@ -56,9 +72,6 @@ export default function ConversationItem({ conversation, isActive }: Conversatio
         </div>
         <div className="text-[11px] font-mono text-text-muted mt-px">
           {formatRelativeTime(conversation.updatedAt)}
-          {conversation.messages.length > 0 && (
-            <> &middot; {conversation.messages.length} msgs</>
-          )}
         </div>
       </div>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-100">

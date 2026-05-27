@@ -1,6 +1,6 @@
 export type MessageRole = "user" | "assistant";
 
-export interface Message {
+export type Message = {
   id: string;
   conversationId: string;
   role: MessageRole;
@@ -8,22 +8,25 @@ export interface Message {
   model?: string;
   tokenCount?: number;
   timestamp: number;
-}
+};
 
-export interface Conversation {
+export type ConversationMeta = {
   id: string;
   title: string;
-  messages: Message[];
   model: string;
   createdAt: number;
   updatedAt: number;
   pinned: boolean;
-}
+};
+
+export type Conversation = ConversationMeta;
 
 export type ConversationGroup = "today" | "yesterday" | "this-week" | "older";
 
-export interface ChatState {
-  conversations: Conversation[];
+export type ChatState = {
+  conversations: ConversationMeta[];
+  activeMessages: Message[];
+  messagesLoading: boolean;
   activeConversationId: string | null;
   streamingMessageId: string | null;
   streamingText: string;
@@ -36,29 +39,29 @@ export interface ChatState {
   activeSettingsTab: "profile" | "llm";
   settings: AppSettings;
   providers: LlmProvider[];
-}
+};
 
 export type LlmModel = {
   id: string;
   name: string;
 };
 
-export interface LlmProvider {
+export type LlmProvider = {
   value: string;
   label: string;
   apiKeyName: string;
   defaultModel: string;
   models: LlmModel[];
-}
+};
 
-export interface AppConfig {
+export type AppConfig = {
   llm: {
     defaultProvider: string;
     providers: LlmProvider[];
   };
-}
+};
 
-export interface AppSettings {
+export type AppSettings = {
   theme: "dark";
   fontSize: number;
   defaultModel: string;
@@ -70,26 +73,34 @@ export interface AppSettings {
   topP: number;
   timeout: number;
   provider: string;
-}
+};
 
-export interface PaletteCommand {
+export type PaletteCommand = {
   id: string;
   label: string;
   shortcut?: string;
   icon?: string;
   category: "action" | "settings";
   action: () => void;
-}
+};
 
 export type ChatAction =
   | { type: "SET_ACTIVE_CONVERSATION"; payload: string }
-  | { type: "ADD_CONVERSATION"; payload: Conversation }
+  | { type: "APPEND_CONVERSATION_META"; payload: ConversationMeta }
+  | { type: "LOAD_CONVERSATIONS"; payload: ConversationMeta[] }
+  | { type: "LOAD_MESSAGES"; payload: Message[] }
+  | { type: "SET_MESSAGES_LOADING"; payload: boolean }
+  | {
+      type: "PATCH_CONVERSATION_META";
+      payload: Partial<ConversationMeta> & { id: string };
+    }
   | { type: "DELETE_CONVERSATION"; payload: string }
-  | { type: "PIN_CONVERSATION"; payload: string }
-  | { type: "RENAME_CONVERSATION"; payload: { id: string; title: string } }
   | { type: "ADD_MESSAGE"; payload: Message }
   | { type: "APPEND_STREAM_TEXT"; payload: string }
-  | { type: "SET_STREAMING"; payload: { messageId: string | null; text: string } }
+  | {
+      type: "SET_STREAMING";
+      payload: { messageId: string | null; text: string };
+    }
   | { type: "FINISH_STREAMING"; payload?: string }
   | { type: "SET_SIDEBAR_SEARCH"; payload: string }
   | { type: "SET_SIDEBAR_WIDTH"; payload: number }
@@ -99,4 +110,7 @@ export type ChatAction =
   | { type: "TOGGLE_SETTINGS" }
   | { type: "SET_SETTINGS_TAB"; payload: "profile" | "llm" }
   | { type: "CLEAR_CONVERSATION"; payload: string }
-  | { type: "SET_PROVIDERS"; payload: { providers: LlmProvider[]; defaultProvider: string } };
+  | {
+      type: "SET_PROVIDERS";
+      payload: { providers: LlmProvider[]; defaultProvider: string };
+    };

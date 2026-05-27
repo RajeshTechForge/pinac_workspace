@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Search } from "lucide-react";
 import CommandItem from "./CommandItem";
 import { useChatContext } from "../../context/ChatContext";
-import type { PaletteCommand, Conversation } from "../../types";
+import type { PaletteCommand, ConversationMeta } from "../../types";
+import { clearMessages } from "../../services/conversation";
 
 export default function CommandPalette() {
   const { state, dispatch } = useChatContext();
@@ -27,18 +28,15 @@ export default function CommandPalette() {
         icon: "new-chat",
         category: "action",
         action: () => {
-          dispatch({
-            type: "ADD_CONVERSATION",
-            payload: {
-              id: `conv-${Date.now()}`,
-              title: "New conversation",
-              messages: [],
-              model: state.settings.defaultModel,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              pinned: false,
-            },
-          });
+          const newMeta: ConversationMeta = {
+            id: `conv-${Date.now()}`,
+            title: "New conversation",
+            model: state.settings.defaultModel,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            pinned: false,
+          };
+          dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
           dispatch({ type: "TOGGLE_COMMAND_PALETTE" });
         },
       },
@@ -48,10 +46,12 @@ export default function CommandPalette() {
         icon: "clear",
         category: "action",
         action: () => {
-          if (state.activeConversationId) {
-            dispatch({
-              type: "CLEAR_CONVERSATION",
-              payload: state.activeConversationId,
+          const convId = state.activeConversationId;
+          if (convId) {
+            dispatch({ type: "CLEAR_CONVERSATION", payload: convId });
+            // Clear message rows from SQLite so they don't reload on next session.
+            void clearMessages(convId).catch((err: unknown) => {
+              console.error(`Failed to clear messages for conversation ${convId}:`, err);
             });
           }
           dispatch({ type: "TOGGLE_COMMAND_PALETTE" });
@@ -82,7 +82,7 @@ export default function CommandPalette() {
 
   const conversationCommands: PaletteCommand[] = useMemo(
     () =>
-      state.conversations.slice(0, 5).map((c: Conversation) => ({
+      state.conversations.slice(0, 5).map((c: ConversationMeta) => ({
         id: `conv-${c.id}`,
         label: c.title,
         category: "settings" as const,

@@ -8,6 +8,7 @@ import {
 import type { ChatState, ChatAction } from "../types";
 import { readAppConfig } from "../services/config";
 import { loadLlmSettings } from "../services/llmSettings";
+import { listConversations, getMessages } from "../services/conversation";
 
 const STORAGE_KEY_SIDEBAR_WIDTH = "pinac-sidebar-width";
 
@@ -19,6 +20,8 @@ function createInitialState(): ChatState {
 
   return {
     conversations: [],
+    activeMessages: [],
+    messagesLoading: false,
     activeConversationId: null,
     streamingMessageId: null,
     streamingText: "",
@@ -49,57 +52,69 @@ function createInitialState(): ChatState {
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "SET_ACTIVE_CONVERSATION":
-      return { ...state, activeConversationId: action.payload };
+      return {
+        ...state,
+        activeConversationId: action.payload,
+        activeMessages: [],
+        messagesLoading: true,
+      };
 
-    case "ADD_CONVERSATION":
+    case "LOAD_CONVERSATIONS":
+      return { ...state, conversations: action.payload };
+
+    case "LOAD_MESSAGES":
+      return {
+        ...state,
+        activeMessages: action.payload,
+        messagesLoading: false,
+      };
+
+    case "SET_MESSAGES_LOADING":
+      return { ...state, messagesLoading: action.payload };
+
+    case "APPEND_CONVERSATION_META":
       return {
         ...state,
         conversations: [action.payload, ...state.conversations],
         activeConversationId: action.payload.id,
+        activeMessages: [],
+        messagesLoading: false,
+      };
+
+    case "PATCH_CONVERSATION_META":
+      return {
+        ...state,
+        conversations: state.conversations.map((c) =>
+          c.id === action.payload.id ? { ...c, ...action.payload } : c,
+        ),
       };
 
     case "DELETE_CONVERSATION": {
       const filtered = state.conversations.filter(
         (c) => c.id !== action.payload,
       );
+      const nextActiveId =
+        state.activeConversationId === action.payload
+          ? (filtered[0]?.id ?? null)
+          : state.activeConversationId;
       return {
         ...state,
         conversations: filtered,
-        activeConversationId:
+        activeConversationId: nextActiveId,
+        activeMessages:
           state.activeConversationId === action.payload
-            ? (filtered[0]?.id ?? null)
-            : state.activeConversationId,
+            ? []
+            : state.activeMessages,
       };
     }
-
-    case "PIN_CONVERSATION":
-      return {
-        ...state,
-        conversations: state.conversations.map((c) =>
-          c.id === action.payload ? { ...c, pinned: !c.pinned } : c,
-        ),
-      };
-
-    case "RENAME_CONVERSATION":
-      return {
-        ...state,
-        conversations: state.conversations.map((c) =>
-          c.id === action.payload.id
-            ? { ...c, title: action.payload.title }
-            : c,
-        ),
-      };
 
     case "ADD_MESSAGE":
       return {
         ...state,
+        activeMessages: [...state.activeMessages, action.payload],
         conversations: state.conversations.map((c) =>
           c.id === action.payload.conversationId
-            ? {
-                ...c,
-                messages: [...c.messages, action.payload],
-                updatedAt: Date.now(),
-              }
+            ? { ...c, updatedAt: Date.now() }
             : c,
         ),
       };
@@ -118,31 +133,33 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "FINISH_STREAMING": {
       const messageId = state.streamingMessageId;
       if (!messageId) return state;
+      const finalText = state.streamingText;
       return {
         ...state,
         isStreaming: false,
         streamingMessageId: null,
         streamingText: "",
-        conversations: state.conversations.map((c) =>
-          c.messages.some((m) => m.id === messageId)
+        activeMessages: state.activeMessages.map((m) =>
+          m.id === messageId
             ? {
-                ...c,
-                messages: c.messages.map((m) =>
-                  m.id === messageId
-                    ? {
-                        ...m,
-                        content: state.streamingText,
-                        tokenCount: Math.round(
-                          state.streamingText.split(" ").length * 1.3,
-                        ),
-                      }
-                    : m,
-                ),
+                ...m,
+                content: finalText,
+                tokenCount: Math.round(finalText.split(" ").length * 1.3),
               }
-            : c,
+            : m,
         ),
       };
     }
+
+    case "CLEAR_CONVERSATION":
+      return {
+        ...state,
+        // Only clear messages if the cleared conversation is currently active.
+        activeMessages:
+          state.activeConversationId === action.payload
+            ? []
+            : state.activeMessages,
+      };
 
     case "SET_SIDEBAR_SEARCH":
       return { ...state, sidebarSearch: action.payload };
@@ -183,17 +200,6 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       };
     }
 
-    case "CLEAR_CONVERSATION": {
-      const conv = state.conversations.find((c) => c.id === action.payload);
-      if (!conv) return state;
-      return {
-        ...state,
-        conversations: state.conversations.map((c) =>
-          c.id === action.payload ? { ...c, messages: [] } : c,
-        ),
-      };
-    }
-
     default:
       return state;
   }
@@ -209,6 +215,7 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, null, createInitialState);
 
+  // Restore persisted LLM settings from localStorage on mount.
   useEffect(() => {
     const stored = loadLlmSettings();
     if (stored !== null) {
@@ -216,6 +223,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Load available LLM providers from the bundled config file on mount.
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -233,6 +241,50 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     loadConfig();
   }, []);
+
+  // Populate the sidebar list from SQLite on mount
+  useEffect(() => {
+    async function loadSidebar() {
+      try {
+        const conversations = await listConversations();
+        dispatch({ type: "LOAD_CONVERSATIONS", payload: conversations });
+      } catch (err) {
+        console.error("Failed to load conversations from DB:", err);
+      }
+    }
+    loadSidebar();
+  }, []);
+
+  useEffect(() => {
+    const id = state.activeConversationId;
+    if (!id || !state.messagesLoading) return;
+
+    let cancelled = false;
+
+    async function loadMessages() {
+      try {
+        const messages = await getMessages(id!);
+        if (!cancelled) {
+          dispatch({ type: "LOAD_MESSAGES", payload: messages });
+        }
+      } catch (err) {
+        console.error(`Failed to load messages for conversation ${id}:`, err);
+        if (!cancelled) {
+          dispatch({ type: "SET_MESSAGES_LOADING", payload: false });
+        }
+      }
+    }
+
+    loadMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.activeConversationId, state.messagesLoading]);
+
+  // Persist sidebar width to localStorage whenever it changes.
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SIDEBAR_WIDTH, String(state.sidebarWidth));
+  }, [state.sidebarWidth]);
 
   return (
     <ChatContext.Provider value={{ state, dispatch }}>
