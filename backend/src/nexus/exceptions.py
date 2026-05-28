@@ -31,8 +31,7 @@ class NexusError(Exception):
     ):
         self.message = message
         self.code = code
-        if details:
-            self.details = details
+        self.details: dict | None = details
         self.status_code = status_code
         super().__init__(self.message)
 

@@ -1,7 +1,9 @@
 use futures_util::StreamExt;
 use reqwest::Client;
 
-use crate::llm::types::{ChatRequest, ChatResponse, LlmError, StreamChunk};
+use crate::llm::types::{
+    ChatRequest, ChatResponse, LlmError, StreamChunk, StreamError, StreamEvent,
+};
 
 const API_ENDPOINT: &str = "http://127.0.0.1:8000/api/llm/chat";
 
@@ -78,11 +80,11 @@ impl LlmClient {
     }
 
     /// Sends a streaming chat request and calls `event_cb` for each parsed
-    /// SSE chunk.
+    /// SSE event.
     pub async fn chat_streaming(
         &self,
         req: ChatRequest,
-        event_cb: impl Fn(StreamChunk),
+        event_cb: impl Fn(Result<StreamChunk, StreamError>),
     ) -> Result<(), LlmError> {
         let response = self.http.post(API_ENDPOINT).json(&req).send().await?;
 
@@ -126,30 +128,45 @@ impl LlmClient {
 
                 let json_str = &buffer[json_start..json_start + json_len];
 
-                let chunk: StreamChunk = serde_json::from_str(json_str)
+                let event: StreamEvent = serde_json::from_str(json_str)
                     .map_err(|e| LlmError::Deserialization(e.to_string()))?;
 
-                let is_final = chunk.is_final;
-                event_cb(chunk);
-                
-                buffer.drain(..json_start + json_len);
-
-                if is_final {
-                    return Ok(());
+                match event {
+                    StreamEvent::Chunk { data: chunk } => {
+                        let is_final = chunk.is_final;
+                        event_cb(Ok(chunk));
+                        buffer.drain(..json_start + json_len);
+                        if is_final {
+                            return Ok(());
+                        }
+                    }
+                    StreamEvent::Error { error } => {
+                        event_cb(Err(error));
+                        buffer.drain(..json_start + json_len);
+                        return Ok(());
+                    }
                 }
             }
         }
 
-        // Stream closed
+        // Stream closed with remaining buffer
         let data_prefix = "data: ";
         if let Some(prefix_pos) = buffer.find(data_prefix) {
             let after_prefix = prefix_pos + data_prefix.len();
             let json_str = buffer[after_prefix..].trim();
-            if let Ok(chunk) = serde_json::from_str::<StreamChunk>(json_str) {
-                let is_final = chunk.is_final;
-                event_cb(chunk);
-                if is_final {
-                    return Ok(());
+            if let Ok(event) = serde_json::from_str::<StreamEvent>(json_str) {
+                match event {
+                    StreamEvent::Chunk { data: chunk } => {
+                        let is_final = chunk.is_final;
+                        event_cb(Ok(chunk));
+                        if is_final {
+                            return Ok(());
+                        }
+                    }
+                    StreamEvent::Error { error } => {
+                        event_cb(Err(error));
+                        return Ok(());
+                    }
                 }
             }
         }

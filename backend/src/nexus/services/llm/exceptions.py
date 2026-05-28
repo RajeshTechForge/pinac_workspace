@@ -24,8 +24,11 @@ class LLMError(NexusError):
 
         details = {"provider": provider} if provider else None
 
+        if status_code is None:
+            status_code = 500
+
         super().__init__(
-            status_code=status_code if status_code is not None else 500,
+            status_code=status_code,
             message=message,
             code="LLM_ERROR",
             details=details,

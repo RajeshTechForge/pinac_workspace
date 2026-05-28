@@ -68,6 +68,26 @@ pub struct StreamChunk {
 }
 
 // ---------------------------------------------------------------------------
+// Stream event wrapper (discriminated by event_type field)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "event_type", rename_all = "snake_case")]
+pub enum StreamEvent {
+    /// Normal streaming chunk with content delta.
+    Chunk { data: StreamChunk },
+    /// Mid-stream or terminal error from the provider.
+    Error { error: StreamError },
+}
+
+/// Structured error detail sent by the backend when a provider fails.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct StreamError {
+    pub code: String,
+    pub message: String,
+}
+
+// ---------------------------------------------------------------------------
 // Error type
 // ---------------------------------------------------------------------------
 

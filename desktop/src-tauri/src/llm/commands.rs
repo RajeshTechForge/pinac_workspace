@@ -3,13 +3,14 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     llm::{
         client::LlmClient,
-        types::{ChatMessage, ChatRequest, ChatResponse, StreamChunk},
+        types::{ChatMessage, ChatRequest, ChatResponse, StreamChunk, StreamError},
     },
     secure_storage,
 };
 
-/// Tauri event name broadcast to all windows for each SSE streaming chunk.
+/// Tauri event name broadcast
 const STREAM_CHUNK_EVENT: &str = "llm-stream-chunk";
+const STREAM_ERROR_EVENT: &str = "llm-stream-error";
 
 // ---------------------------------------------------------------------------
 // Shared request builder
@@ -64,7 +65,16 @@ pub async fn llm_chat(
     timeout: f64,
 ) -> Result<ChatResponse, String> {
     let req = build_request(
-        &app, &key_name, provider, model, messages, max_tokens, temperature, top_p, timeout, false,
+        &app,
+        &key_name,
+        provider,
+        model,
+        messages,
+        max_tokens,
+        temperature,
+        top_p,
+        timeout,
+        false,
     )?;
     let client = LlmClient::new();
     client.chat_blocking(req).await.map_err(String::from)
@@ -85,13 +95,30 @@ pub async fn llm_chat_stream(
     timeout: f64,
 ) -> Result<(), String> {
     let req = build_request(
-        &app, &key_name, provider, model, messages, max_tokens, temperature, top_p, timeout, true,
+        &app,
+        &key_name,
+        provider,
+        model,
+        messages,
+        max_tokens,
+        temperature,
+        top_p,
+        timeout,
+        true,
     )?;
     let client = LlmClient::new();
     client
-        .chat_streaming(req, |chunk: StreamChunk| {
-            let _ = app.emit(STREAM_CHUNK_EVENT, &chunk);
-        })
+        .chat_streaming(
+            req,
+            |result: Result<StreamChunk, StreamError>| match result {
+                Ok(chunk) => {
+                    let _ = app.emit(STREAM_CHUNK_EVENT, &chunk);
+                }
+                Err(err) => {
+                    let _ = app.emit(STREAM_ERROR_EVENT, &err);
+                }
+            },
+        )
         .await
         .map_err(String::from)
 }
@@ -99,11 +126,7 @@ pub async fn llm_chat_stream(
 /// Encrypts `plaintext_key` with AES-128-GCM and stores the result in
 /// `<app_data_dir>/<key_name>.enc`.
 #[tauri::command]
-pub fn save_api_key(
-    app: AppHandle,
-    key_name: String,
-    plaintext_key: String,
-) -> Result<(), String> {
+pub fn save_api_key(app: AppHandle, key_name: String, plaintext_key: String) -> Result<(), String> {
     secure_storage::encrypt_and_store(&app, &key_name, &plaintext_key).map_err(String::from)
 }
 

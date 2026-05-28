@@ -1,6 +1,5 @@
 """LLM proxy routes for chat completion."""
 
-import json
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter
@@ -9,7 +8,12 @@ from fastapi.responses import StreamingResponse
 from nexus.api.schemas import ChatRequest, ChatResponse
 from nexus.exceptions import NexusError
 from nexus.services.llm import BYOKLLMService
-from nexus.services.llm.schemas import StreamChunkSchema
+from nexus.services.llm.schemas import (
+    StreamChunkEvent,
+    StreamChunkSchema,
+    StreamErrorEvent,
+    StreamErrorPayload,
+)
 
 router = APIRouter()
 
@@ -24,28 +28,26 @@ async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
         ) as svc:
             request = body.to_llm_request()
             async for chunk in svc.stream(request):
-                schema = StreamChunkSchema.from_domain(chunk)
-                yield f"data: {schema.model_dump_json()}\n\n".encode("utf-8")
+                event = StreamChunkEvent(data=StreamChunkSchema.from_domain(chunk))
+                yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
 
     except NexusError as exc:
-        payload = {
-            "is_final": True,
-            "error": {
-                "code": exc.code,
-                "message": exc.message,
-                "details": exc.details,
-            },
-        }
-        yield f"data: {json.dumps(payload)}\n\n".encode("utf-8")
+        event = StreamErrorEvent(
+            error=StreamErrorPayload(
+                code=exc.code,
+                message=exc.message,
+                details=exc.details,
+            )
+        )
+        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
     except Exception:
-        payload = {
-            "is_final": True,
-            "error": {
-                "code": "INTERNAL_ERROR",
-                "message": "An unexpected error occurred during streaming.",
-            },
-        }
-        yield f"data: {json.dumps(payload)}\n\n".encode("utf-8")
+        event = StreamErrorEvent(
+            error=StreamErrorPayload(
+                code="INTERNAL_ERROR",
+                message="An unexpected error occurred during streaming.",
+            )
+        )
+        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
 
 
 @router.post("/chat")
@@ -56,12 +58,6 @@ async def chat_completion(body: ChatRequest):
     If stream=False, returns a standard ChatResponse JSON payload.
     """
     if body.stream:
-        BYOKLLMService(
-            provider_type=body.provider,
-            api_key=body.api_key,
-            model=body.model,
-        )
-
         return StreamingResponse(
             _byok_stream_generator(body),
             media_type="text/event-stream",

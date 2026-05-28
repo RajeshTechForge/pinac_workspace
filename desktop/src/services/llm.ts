@@ -22,6 +22,11 @@ type StreamChunk = {
   is_final: boolean;
 };
 
+type StreamErrorPayload = {
+  code: string;
+  message: string;
+};
+
 // ---------------------------------------------------------------------------
 // Service function
 // ---------------------------------------------------------------------------
@@ -31,9 +36,19 @@ export async function streamLlmResponse(
   onChunk: (delta: string, isFinal: boolean) => void,
   onError: (message: string) => void,
 ): Promise<() => void> {
-  const unlisten = await listen<StreamChunk>("llm-stream-chunk", (event) => {
-    onChunk(event.payload.delta, event.payload.is_final);
-  });
+  const unlistenChunk = await listen<StreamChunk>(
+    "llm-stream-chunk",
+    (event) => {
+      onChunk(event.payload.delta, event.payload.is_final);
+    },
+  );
+
+  const unlistenError = await listen<StreamErrorPayload>(
+    "llm-stream-error",
+    (event) => {
+      onError(event.payload.message);
+    },
+  );
 
   invoke<void>("llm_chat_stream", {
     keyName: payload.keyName,
@@ -52,5 +67,8 @@ export async function streamLlmResponse(
     );
   });
 
-  return unlisten;
+  return () => {
+    unlistenChunk();
+    unlistenError();
+  };
 }

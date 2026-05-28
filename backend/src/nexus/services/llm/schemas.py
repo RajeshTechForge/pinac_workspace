@@ -8,7 +8,8 @@ boundaries and specific structural constraints.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from enum import Enum
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -399,6 +400,52 @@ class StreamChunkSchema(BaseModel):
             else ProviderType.ANTHROPIC,
             latency_ms=self.latency_ms,
         )
+
+
+# ---------------------------------------------------------------------------
+# SSE envelope (discriminated union)
+# ---------------------------------------------------------------------------
+
+
+class StreamEventType(str, Enum):
+    """Discriminator values for SSE frames sent by the streaming endpoint."""
+
+    CHUNK = "chunk"
+    ERROR = "error"
+
+
+class StreamErrorPayload(BaseModel):
+    """Error detail embedded inside a :class:'StreamErrorEvent' frame."""
+
+    code: str = Field(
+        ..., description="Machine-readable error code. (e.g. 'AUTH_ERROR')"
+    )
+    message: str = Field(..., description="Human-readable error description.")
+    details: dict | None = Field(
+        default=None,
+        description="Optional structured context. None when unavailable.",
+    )
+
+
+class StreamChunkEvent(BaseModel):
+    """SSE envelope for a normal token-delta chunk."""
+
+    event_type: Literal[StreamEventType.CHUNK] = StreamEventType.CHUNK
+    data: StreamChunkSchema
+
+
+class StreamErrorEvent(BaseModel):
+    """SSE envelope for a terminal error frame emitted mid-stream."""
+
+    event_type: Literal[StreamEventType.ERROR] = StreamEventType.ERROR
+    error: StreamErrorPayload
+
+
+StreamSSEEvent = Annotated[
+    StreamChunkEvent | StreamErrorEvent,
+    Field(discriminator="event_type"),
+]
+"""Discriminated union of all SSE frame types for the streaming endpoint."""
 
 
 # ---------------------------------------------------------------------------
