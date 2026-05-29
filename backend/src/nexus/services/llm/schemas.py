@@ -21,6 +21,7 @@ from .base import (
     ProviderType,
     Role,
     StreamChunk,
+    ThinkingConfig,
     TokenUsage,
 )
 
@@ -64,6 +65,126 @@ class MessageSchema(BaseModel):
             The Pydantic message schema instance.
         """
         return cls(role=msg.role, content=msg.content)
+
+
+# ---------------------------------------------------------------------------
+# Thinking configuration
+# ---------------------------------------------------------------------------
+
+
+class AnthropicThinkingOptions(BaseModel):
+    """Anthropic-specific thinking overrides.
+
+    Controls the two thinking modes on Claude models:
+
+    - Adaptive: (thinking_type='adaptive'): Claude dynamically decides
+      reasoning depth. Use "effort" to guide the level. Available on
+      Claude 4.6+. Required on Opus 4.7+.
+    - Fixed-budget: (thinking_type='enabled'): Explicit token budget via
+      "budget_tokens". Deprecated on Claude 4.6, removed on Opus 4.7+.
+    """
+
+    provider: Literal["anthropic"] = "anthropic"
+    thinking_type: Literal["adaptive", "enabled"] | None = Field(
+        default=None,
+        description=(
+            "Thinking mode. 'adaptive' for dynamic reasoning depth, "
+            "'enabled' for fixed token budget. Defaults to 'adaptive' when omitted."
+        ),
+    )
+    budget_tokens: int | None = Field(
+        default=None,
+        ge=1024,
+        description="Fixed token budget. Only valid with thinking_type='enabled'.",
+    )
+    effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
+        default=None,
+        description=(
+            "Effort level for adaptive thinking. Provider default is 'high'. "
+            "'xhigh' and 'max' are not available on all models."
+        ),
+    )
+
+
+class OpenAIThinkingOptions(BaseModel):
+    """OpenAI-specific thinking overrides.
+
+    OpenAI reasoning models are always reasoning-capable — there is no
+    on/off toggle. This schema controls the reasoning effort level.
+    """
+
+    provider: Literal["openai"] = "openai"
+    effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = Field(
+        default=None,
+        description="Reasoning effort level. Lower = faster, higher = deeper reasoning.",
+    )
+
+
+class GeminiThinkingOptions(BaseModel):
+    """Gemini-specific thinking overrides."""
+
+    provider: Literal["gemini"] = "gemini"
+    level: Literal["MINIMAL", "LOW", "MEDIUM", "HIGH"] | None = Field(
+        default=None,
+        description="Gemini thinking level.",
+    )
+
+
+ProviderThinkingOptions = Annotated[
+    AnthropicThinkingOptions | OpenAIThinkingOptions | GeminiThinkingOptions,
+    Field(discriminator="provider"),
+]
+"""Discriminated union of provider-specific thinking option models."""
+
+
+class ThinkingConfigSchema(BaseModel):
+    """Provider-agnostic thinking/reasoning configuration.
+
+    Use the normalized "effort" field for the common case (covers
+    "low", "medium", "high" across all providers). For
+    provider-specific parameters that have no cross-provider equivalent
+    (e.g. Anthropic "budget_tokens", OpenAI "xhigh"), use
+    "provider_options". When both "effort" and "provider_options"
+    are set, "provider_options" takes precedence.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Activate thinking/reasoning mode.",
+    )
+    effort: Literal["low", "medium", "high"] | None = Field(
+        default=None,
+        description=(
+            "Normalized effort level mapped to each provider's native vocabulary. "
+            "Ignored when provider_options supplies its own effort/level."
+        ),
+    )
+    provider_options: ProviderThinkingOptions | None = Field(
+        default=None,
+        description=(
+            "Typed provider-specific overrides. Discriminated by the 'provider' "
+            "literal field inside each options model."
+        ),
+    )
+
+    def to_domain(self) -> ThinkingConfig:
+        """Convert to the internal ThinkingConfig dataclass.
+
+        Returns:
+            The domain ThinkingConfig with provider_options serialized
+            to a plain dict ("provider" key excluded).
+        """
+        return ThinkingConfig(
+            enabled=self.enabled,
+            effort=self.effort,
+            provider_options=(
+                self.provider_options.model_dump(
+                    exclude={"provider"}, exclude_none=True
+                )
+                if self.provider_options
+                else None
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +269,14 @@ class LLMRequestSchema(BaseModel):
             )
         return self
 
+    thinking: ThinkingConfigSchema | None = Field(
+        default=None,
+        description=(
+            "Thinking/reasoning configuration. When omitted or None, "
+            "no thinking parameters are sent to the provider."
+        ),
+    )
+
     def to_domain(self) -> LLMRequest:
         """Produce the zero-overhead dataclass dispatched by the router and providers.
 
@@ -163,6 +292,7 @@ class LLMRequestSchema(BaseModel):
             stop_sequences=list(self.stop_sequences),
             stream=self.stream,
             timeout=self.timeout,
+            thinking=self.thinking.to_domain() if self.thinking else None,
         )
 
     @classmethod
@@ -184,6 +314,12 @@ class LLMRequestSchema(BaseModel):
             stop_sequences=req.stop_sequences,
             stream=req.stream,
             timeout=req.timeout,
+            thinking=ThinkingConfigSchema(
+                enabled=req.thinking.enabled,
+                effort=req.thinking.effort,
+            )
+            if req.thinking
+            else None,
         )
 
 
@@ -193,7 +329,14 @@ class LLMRequestSchema(BaseModel):
 
 
 class TokenUsageSchema(BaseModel):
-    """Token consumption for a single request, used for cost attribution and rate-limit budgeting."""
+    """Token consumption for a single request, used for cost attribution and rate-limit budgeting.
+
+    Semantic contract:
+        - "completion_tokens" counts answer tokens **only** (excludes thinking).
+        - "thinking_tokens" counts reasoning/thinking tokens. Reported as 0
+          when the provider does not expose a separate count (e.g. Anthropic).
+        - "total_tokens" equals "prompt_tokens + completion_tokens + thinking_tokens".
+    """
 
     prompt_tokens: int = Field(
         default=0,
@@ -203,12 +346,21 @@ class TokenUsageSchema(BaseModel):
     completion_tokens: int = Field(
         default=0,
         ge=0,
-        description="Tokens generated in the response.",
+        description="Tokens generated in the answer (excludes thinking tokens).",
+    )
+    thinking_tokens: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Tokens consumed by extended thinking/reasoning. Not included "
+            "in completion_tokens. Reported as 0 when the provider does not "
+            "expose a separate count (e.g. Anthropic)."
+        ),
     )
     total_tokens: int = Field(
         default=0,
         ge=0,
-        description="Sum of prompt and completion tokens.",
+        description="Sum of prompt, completion, and thinking tokens.",
     )
 
     @model_validator(mode="after")
@@ -218,7 +370,7 @@ class TokenUsageSchema(BaseModel):
         Returns:
             The TokenUsageSchema instance with corrected total_tokens if necessary.
         """
-        expected = self.prompt_tokens + self.completion_tokens
+        expected = self.prompt_tokens + self.completion_tokens + self.thinking_tokens
         discrepancy = abs(self.total_tokens - expected)
 
         # Correct if total is missing (0 and we have data) or materially wrong
@@ -232,6 +384,7 @@ class TokenUsageSchema(BaseModel):
         return TokenUsage(
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
+            thinking_tokens=self.thinking_tokens,
             total_tokens=self.total_tokens,
         )
 
@@ -241,6 +394,7 @@ class TokenUsageSchema(BaseModel):
         return cls(
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=usage.completion_tokens,
+            thinking_tokens=usage.thinking_tokens,
             total_tokens=usage.total_tokens,
         )
 
@@ -255,7 +409,15 @@ class LLMResponseSchema(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
-    content: str = Field(..., description="Generated text content.")
+    content: str = Field(..., description="Generated text content (answer only).")
+    thinking_content: str = Field(
+        default="",
+        description=(
+            "Reasoning/thinking text produced by the model. Empty when thinking "
+            "is disabled, the provider does not expose thinking text (e.g. OpenAI), "
+            "or thinking display is set to 'omitted'."
+        ),
+    )
     finish_reason: FinishReason = Field(
         ..., description="Why the model stopped generating."
     )
@@ -303,6 +465,7 @@ class LLMResponseSchema(BaseModel):
         """
         return cls(
             content=resp.content,
+            thinking_content=resp.thinking_content,
             finish_reason=resp.finish_reason,
             usage=TokenUsageSchema.from_domain(resp.usage),
             model=resp.model,
@@ -315,6 +478,7 @@ class LLMResponseSchema(BaseModel):
         """Convert to the internal LLMResponse domain dataclass."""
         return LLMResponse(
             content=self.content,
+            thinking_content=self.thinking_content,
             finish_reason=FinishReason(self.finish_reason),
             usage=self.usage.to_domain(),
             model=self.model,
@@ -337,6 +501,16 @@ class StreamChunkSchema(BaseModel):
     delta: str = Field(
         ...,
         description="Incremental text. Empty string on the final chunk.",
+    )
+    is_thinking: bool = Field(
+        default=False,
+        description=(
+            "True when this delta carries thinking/reasoning text rather than "
+            "answer text. Thinking chunks always precede answer chunks — the "
+            "transition from True to False is a one-way switch, never interleaved. "
+            "Always False for providers that do not expose thinking text (e.g. OpenAI). "
+            "Always False on the final sentinel chunk."
+        ),
     )
     is_final: bool = Field(
         default=False,
@@ -379,6 +553,7 @@ class StreamChunkSchema(BaseModel):
         """
         return cls(
             delta=chunk.delta,
+            is_thinking=chunk.is_thinking,
             is_final=chunk.is_final,
             finish_reason=chunk.finish_reason,
             usage=TokenUsageSchema.from_domain(chunk.usage),
@@ -391,6 +566,7 @@ class StreamChunkSchema(BaseModel):
         """Convert back to the internal StreamChunk dataclass."""
         return StreamChunk(
             delta=self.delta,
+            is_thinking=self.is_thinking,
             is_final=self.is_final,
             finish_reason=FinishReason(self.finish_reason),
             usage=self.usage.to_domain(),

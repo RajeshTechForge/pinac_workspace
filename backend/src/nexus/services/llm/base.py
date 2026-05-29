@@ -81,6 +81,32 @@ class Message:
         return {"role": self.role.value, "content": self.content}
 
 
+@dataclass(frozen=True)
+class ThinkingConfig:
+    """Provider-agnostic thinking/reasoning configuration.
+
+    Carried through the domain layer from the validated schema boundary
+    to provider implementations. Each provider maps these fields to its
+    native SDK parameters.
+
+    Attributes:
+        enabled: Whether thinking/reasoning is active for this request.
+        effort: Normalized effort level ("low", "medium", "high") that each
+            provider maps to its native vocabulary. None defers to the
+            provider's default.
+        provider_options: Provider-specific overrides, validated as a typed
+            Pydantic model at the schema boundary and converted to a plain
+            dict via "model_dump()". Takes precedence over "effort"
+            when both are set. Keys and value types are constrained by
+            the schema-layer union; "str | int | None" covers all
+            current provider option fields.
+    """
+
+    enabled: bool = False
+    effort: str | None = None
+    provider_options: dict[str, str | int | None] | None = None
+
+
 @dataclass
 class LLMRequest:
     """Everything a provider needs to fulfil a completion or streaming request."""
@@ -95,6 +121,7 @@ class LLMRequest:
 
     stream: bool = False
     timeout: float | None = 30.0  # in seconds
+    thinking: ThinkingConfig | None = None
 
     def __post_init__(self) -> None:
         if not self.messages:
@@ -109,10 +136,18 @@ class LLMRequest:
 
 @dataclass
 class TokenUsage:
-    """Token consumption for a single provider call."""
+    """Token consumption for a single provider call.
+
+    Semantic contract:
+        - "completion_tokens" counts answer tokens **only** (excludes thinking).
+        - "thinking_tokens" counts reasoning/thinking tokens. Reported as 0
+          when the provider does not expose a separate count (e.g. Anthropic).
+        - "total_tokens" equals "prompt_tokens + completion_tokens + thinking_tokens".
+    """
 
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    thinking_tokens: int = 0
     total_tokens: int = 0
 
     @classmethod
@@ -136,6 +171,7 @@ class TokenUsage:
         return TokenUsage(
             prompt_tokens=self.prompt_tokens + other.prompt_tokens,
             completion_tokens=self.completion_tokens + other.completion_tokens,
+            thinking_tokens=self.thinking_tokens + other.thinking_tokens,
             total_tokens=self.total_tokens + other.total_tokens,
         )
 
@@ -149,9 +185,9 @@ class LLMResponse:
     usage: TokenUsage
     model: str
     provider: ProviderType
+    thinking_content: str = ""
     latency_ms: float = 0.0
 
-    # Excluded from repr to keep logs readable
     raw_response: Any = field(default=None, repr=False)
 
     @property
@@ -162,9 +198,16 @@ class LLMResponse:
 
 @dataclass
 class StreamChunk:
-    """One token or delta fragment from a streaming response."""
+    """One token or delta fragment from a streaming response.
+
+    Ordering contract: all thinking chunks ("is_thinking=True") are emitted
+    before any answer chunks ("is_thinking=False"). The transition from
+    "True" to "False" is one-way and never interleaved. The final sentinel
+    chunk always has "is_thinking=False".
+    """
 
     delta: str
+    is_thinking: bool = False
     is_final: bool = False
 
     finish_reason: FinishReason = FinishReason.UNKNOWN
@@ -206,6 +249,7 @@ class ProviderCapabilities:
     supports_system_prompt: bool = True
     supports_tool_calling: bool = False
     supports_vision: bool = False
+    supports_thinking: bool = False
     max_context_tokens: int = 8_192
     provider_type: ProviderType = ProviderType.ANTHROPIC
 
@@ -256,18 +300,18 @@ class LLMProvider(ABC):
         """Create the underlying HTTP client without running a credential probe.
 
         This is the lightweight initialization path used by
-        :class:`~src.services.llm.byok.BYOKLLMService` for BYOK requests.
+        :class:'~src.services.llm.byok.BYOKLLMService' for BYOK requests.
         Calling code receives auth errors from the first inference call
-        (:meth:`complete` / :meth:`stream`) rather than from a pre-flight probe,
+        (:meth:'complete' / :meth:'stream') rather than from a pre-flight probe,
         which avoids extra latency and billable probe requests for each user key.
 
         Concrete implementations must:
         1. Guard against double-initialization (idempotent — return early if
-           ``self._initialized`` is already ``True``).
+           "self._initialized" is already "True").
         2. Instantiate the provider-specific async HTTP client and assign it to
-           ``self._client``.
-        3. Set ``self._initialized = True`` after successful client creation.
-        4. Raise :exc:`~src.services.llm.exceptions.LLMProviderInitError` if the
+           "self._client".
+        3. Set "self._initialized = True" after successful client creation.
+        4. Raise :exc:'~src.services.llm.exceptions.LLMProviderInitError' if the
            client cannot be constructed (e.g. missing or malformed credentials in
            the config dataclass).
 
@@ -445,7 +489,7 @@ class LLMProvider(ABC):
         else:
             raise RuntimeError(
                 "run_sync() cannot be called from within a running event loop. "
-                "Use `await provider.complete(request)` instead."
+                "Use 'await provider.complete(request)' instead."
             )
         return asyncio.run(self.complete(request))
 
