@@ -41,6 +41,7 @@ from ..base import (
     RetryPolicy,
     Role,
     StreamChunk,
+    ThinkingConfig,
     TokenUsage,
 )
 from ..exceptions import (
@@ -135,6 +136,7 @@ class AnthropicProvider(LLMProvider):
         supports_system_prompt=True,
         supports_tool_calling=True,
         supports_vision=True,
+        supports_thinking=True,
         max_context_tokens=_MAX_CONTEXT_TOKENS,
         provider_type=ProviderType.ANTHROPIC,
     )
@@ -226,7 +228,7 @@ class AnthropicProvider(LLMProvider):
     async def _init_client_only(self) -> None:
         """Create the AsyncAnthropic HTTP client without running a credential probe.
 
-        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        Intended for use by :class:'~src.services.llm.byok.BYOKLLMService' so that
         authentication errors surface from the first inference call rather than
         from a pre-flight token-count probe, avoiding extra latency and billable
         probe requests for each BYOK user key.
@@ -276,15 +278,17 @@ class AnthropicProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         system_prompt, messages = self._split_messages(request.messages)
+        thinking_kwargs = self._build_thinking_params(request.thinking)
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "Anthropic complete | model=%s messages=%d",
+            "Anthropic complete | model=%s messages=%d thinking=%s",
             model,
             len(messages),
+            bool(thinking_kwargs),
         )
 
         try:
@@ -294,12 +298,19 @@ class AnthropicProvider(LLMProvider):
                     messages=messages,
                     max_tokens=request.max_tokens,
                     system=system_prompt if system_prompt else anthropic.NOT_GIVEN,
-                    temperature=request.temperature,
+                    temperature=(
+                        request.temperature
+                        if not thinking_kwargs
+                        else anthropic.NOT_GIVEN
+                    ),
                     top_p=(
-                        request.top_p if request.top_p != 1.0 else anthropic.NOT_GIVEN
+                        request.top_p
+                        if request.top_p != 1.0 and not thinking_kwargs
+                        else anthropic.NOT_GIVEN
                     ),
                     stop_sequences=request.stop_sequences or anthropic.NOT_GIVEN,
                     stream=False,
+                    **thinking_kwargs,
                 ),
                 timeout=timeout,
             )
@@ -333,14 +344,16 @@ class AnthropicProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         system_prompt, messages = self._split_messages(request.messages)
+        thinking_kwargs = self._build_thinking_params(request.thinking)
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "Anthropic stream | model=%s",
+            "Anthropic stream | model=%s thinking=%s",
             model,
+            bool(thinking_kwargs),
         )
 
         try:
@@ -349,13 +362,42 @@ class AnthropicProvider(LLMProvider):
                 messages=messages,
                 max_tokens=request.max_tokens,
                 system=system_prompt if system_prompt else anthropic.NOT_GIVEN,
-                temperature=request.temperature,
-                top_p=(request.top_p if request.top_p != 1.0 else anthropic.NOT_GIVEN),
+                temperature=(
+                    request.temperature if not thinking_kwargs else anthropic.NOT_GIVEN
+                ),
+                top_p=(
+                    request.top_p
+                    if request.top_p != 1.0 and not thinking_kwargs
+                    else anthropic.NOT_GIVEN
+                ),
                 stop_sequences=request.stop_sequences or anthropic.NOT_GIVEN,
                 timeout=timeout,
+                **thinking_kwargs,
             ) as stream_mgr:
-                async for text_delta in stream_mgr.text_stream:
-                    yield StreamChunk(delta=text_delta)
+                async for event in stream_mgr:
+                    if hasattr(event, "type") and event.type == "content_block_delta":
+                        delta_obj = getattr(event, "delta", None)
+                        if delta_obj is None:
+                            continue
+                        delta_type = getattr(delta_obj, "type", None)
+                        if (
+                            delta_type == "thinking_delta"
+                            and hasattr(delta_obj, "thinking")
+                            and delta_obj.thinking
+                        ):
+                            yield StreamChunk(
+                                delta=delta_obj.thinking,
+                                is_thinking=True,
+                            )
+                        elif (
+                            delta_type == "text_delta"
+                            and hasattr(delta_obj, "text")
+                            and delta_obj.text
+                        ):
+                            yield StreamChunk(
+                                delta=delta_obj.text,
+                                is_thinking=False,
+                            )
 
                 # Retrieves final authoritative message for usage statistics.
                 final_msg: AnthropicMessage = await stream_mgr.get_final_message()
@@ -363,7 +405,8 @@ class AnthropicProvider(LLMProvider):
         except Exception as exc:
             raise self._map_anthropic_error(exc) from exc
 
-        # Yields final sentinel chunk with aggregated usage and finish metadata.
+        # Anthropic does not provide a separate thinking token count.
+        # output_tokens includes both thinking and answer tokens.
         yield StreamChunk(
             delta="",
             is_final=True,
@@ -373,6 +416,7 @@ class AnthropicProvider(LLMProvider):
             usage=TokenUsage(
                 prompt_tokens=final_msg.usage.input_tokens,
                 completion_tokens=final_msg.usage.output_tokens,
+                thinking_tokens=0,
                 total_tokens=final_msg.usage.input_tokens
                 + final_msg.usage.output_tokens,
             ),
@@ -503,16 +547,26 @@ class AnthropicProvider(LLMProvider):
         Returns:
             The constructed LLMResponse domain object.
         """
-        # Extracts text from blocks with defined .text attributes.
-        # Skips tool-use blocks intentionally.
-        content = "".join(block.text for block in raw.content if hasattr(block, "text"))
+        content_parts: list[str] = []
+        thinking_parts: list[str] = []
 
+        for block in raw.content:
+            block_type = getattr(block, "type", None)
+            if block_type == "text" and hasattr(block, "text"):
+                content_parts.append(block.text)
+            elif block_type == "thinking" and hasattr(block, "thinking"):
+                thinking_parts.append(block.thinking)
+
+        # Anthropic does not provide a separate thinking token count.
+        # output_tokens includes both thinking and answer tokens.
         return LLMResponse(
-            content=content,
+            content="".join(content_parts),
+            thinking_content="".join(thinking_parts),
             finish_reason=_STOP_REASON_MAP.get(raw.stop_reason, FinishReason.UNKNOWN),
             usage=TokenUsage(
                 prompt_tokens=raw.usage.input_tokens,
                 completion_tokens=raw.usage.output_tokens,
+                thinking_tokens=0,
                 total_tokens=raw.usage.input_tokens + raw.usage.output_tokens,
             ),
             model=raw.model,
@@ -528,6 +582,48 @@ class AnthropicProvider(LLMProvider):
             return str(exc.body["error"]["message"])
         except (TypeError, KeyError):
             return ""
+
+    @staticmethod
+    def _build_thinking_params(
+        thinking: ThinkingConfig | None,
+    ) -> dict[str, object]:
+        """Map a domain ThinkingConfig to Anthropic SDK keyword arguments.
+
+        Produces the "thinking" and "output_config" kwargs accepted by
+        "messages.create()" / "messages.stream()". Returns an empty
+        dict when thinking is disabled or not requested, so the caller
+        can unpack with "**".
+
+        Precedence:
+            1. "provider_options" fields (thinking_type, effort, budget_tokens)
+            2. Normalized "thinking.effort"
+            3. Provider defaults (adaptive mode, effort="high")
+
+        Args:
+            thinking: The domain thinking configuration, or None.
+
+        Returns:
+            A dict of SDK keyword arguments (may be empty).
+        """
+        if thinking is None or not thinking.enabled:
+            return {}
+
+        opts = thinking.provider_options or {}
+        thinking_type = opts.get("thinking_type", "adaptive")
+
+        result: dict[str, object] = {}
+
+        if thinking_type == "enabled":
+            budget = opts.get("budget_tokens")
+            if budget is None:
+                budget = 10_000
+            result["thinking"] = {"type": "enabled", "budget_tokens": int(budget)}
+        else:
+            result["thinking"] = {"type": "adaptive"}
+            effort = opts.get("effort") or thinking.effort or "high"
+            result["output_config"] = {"effort": effort}
+
+        return result
 
     @staticmethod
     def _map_anthropic_error(exc: Exception) -> LLMError:

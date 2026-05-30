@@ -41,6 +41,7 @@ from ..base import (
     RetryPolicy,
     Role,
     StreamChunk,
+    ThinkingConfig,
     TokenUsage,
 )
 from ..exceptions import (
@@ -158,6 +159,7 @@ class GeminiProvider(LLMProvider):
         supports_system_prompt=True,
         supports_tool_calling=True,
         supports_vision=True,
+        supports_thinking=True,
         max_context_tokens=_MAX_CONTEXT_TOKENS,
         provider_type=ProviderType.GEMINI,
     )
@@ -266,14 +268,14 @@ class GeminiProvider(LLMProvider):
     async def _init_client_only(self) -> None:
         """Create the google-genai Client without running a credential probe.
 
-        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        Intended for use by :class:'~src.services.llm.byok.BYOKLLMService' so that
         authentication errors surface from the first inference call rather than
-        from a pre-flight ``count_tokens`` probe, avoiding extra latency and
+        from a pre-flight "count_tokens" probe, avoiding extra latency and
         billable probe requests for each BYOK user key.
 
-        Handles both API-key mode (``vertexai=False``) and Vertex AI mode
-        (``vertexai=True``), mirroring the client construction logic in
-        :meth:`initialize` without the subsequent probe call.
+        Handles both API-key mode ("vertexai=False") and Vertex AI mode
+        ("vertexai=True"), mirroring the client construction logic in
+        :meth:'initialize' without the subsequent probe call.
 
         Raises:
             LLMProviderInitError: If the google-genai Client cannot be created.
@@ -325,16 +327,19 @@ class GeminiProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         system_instruction, contents = self._split_messages(request.messages)
-        gen_cfg = self._build_generation_config(request, system_instruction)
+        gen_cfg = self._build_generation_config(
+            request, system_instruction, request.thinking
+        )
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "Gemini complete | model=%s turns=%d",
+            "Gemini complete | model=%s turns=%d thinking=%s",
             model,
             len(contents),
+            request.thinking.enabled if request.thinking else False,
         )
 
         try:
@@ -389,15 +394,18 @@ class GeminiProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         system_instruction, contents = self._split_messages(request.messages)
-        gen_cfg = self._build_generation_config(request, system_instruction)
+        gen_cfg = self._build_generation_config(
+            request, system_instruction, request.thinking
+        )
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "Gemini stream | model=%s",
+            "Gemini stream | model=%s thinking=%s",
             model,
+            request.thinking.enabled if request.thinking else False,
         )
 
         finish_reason = FinishReason.UNKNOWN
@@ -414,16 +422,19 @@ class GeminiProvider(LLMProvider):
                     contents=contents,
                     config=gen_cfg,
                 ):
-                    delta = chunk.text or ""
-
                     # Updates usage and finish_reason properties incrementally.
                     # Retains the last non-None value as authoritative final state.
                     if chunk.usage_metadata is not None:
+                        thinking_toks = (
+                            getattr(chunk.usage_metadata, "thoughts_token_count", None)
+                            or 0
+                        )
                         usage = TokenUsage(
                             prompt_tokens=chunk.usage_metadata.prompt_token_count or 0,
                             completion_tokens=(
                                 chunk.usage_metadata.candidates_token_count or 0
                             ),
+                            thinking_tokens=thinking_toks,
                             total_tokens=chunk.usage_metadata.total_token_count or 0,
                         )
                     if chunk.candidates:
@@ -435,9 +446,16 @@ class GeminiProvider(LLMProvider):
                     if chunk.model_version:
                         model_version = chunk.model_version
 
-                    if delta:
-                        any_chunk_yielded = True
-                        yield StreamChunk(delta=delta)
+                    # Distinguish thinking parts from answer parts.
+                    if chunk.candidates:
+                        for part in chunk.candidates[0].content.parts:
+                            if hasattr(part, "thought") and part.thought:
+                                if part.text:
+                                    any_chunk_yielded = True
+                                    yield StreamChunk(delta=part.text, is_thinking=True)
+                            elif part.text:
+                                any_chunk_yielded = True
+                                yield StreamChunk(delta=part.text, is_thinking=False)
 
         except asyncio.TimeoutError as exc:
             elapsed = time.monotonic() - start
@@ -600,22 +618,48 @@ class GeminiProvider(LLMProvider):
     def _build_generation_config(
         request: LLMRequest,
         system_instruction: str,
+        thinking: ThinkingConfig | None = None,
     ) -> genai_types.GenerateContentConfig:
         """Build GenerateContentConfig from an LLMRequest.
 
         Args:
             request: The generation request.
             system_instruction: The separated system instruction.
+            thinking: Optional thinking configuration.
 
         Returns:
             The constructed generation config object.
         """
+        thinking_config = None
+        if thinking is not None and thinking.enabled:
+            opts = thinking.provider_options or {}
+            level = opts.get("level")
+
+            if not level and thinking.effort:
+                effort_to_level = {
+                    "low": "LOW",
+                    "medium": "MEDIUM",
+                    "high": "HIGH",
+                }
+                level = effort_to_level.get(thinking.effort)
+
+            if level:
+                thinking_config = genai_types.ThinkingConfig(
+                    thinking_level=level,
+                    include_thoughts=True,
+                )
+            else:
+                thinking_config = genai_types.ThinkingConfig(
+                    include_thoughts=True,
+                )
+
         return genai_types.GenerateContentConfig(
             system_instruction=system_instruction if system_instruction else None,
             temperature=request.temperature,
             top_p=request.top_p if request.top_p != 1.0 else None,
             max_output_tokens=request.max_tokens,
             stop_sequences=request.stop_sequences if request.stop_sequences else None,
+            thinking_config=thinking_config,
         )
 
     def _build_response(
@@ -637,7 +681,18 @@ class GeminiProvider(LLMProvider):
         Raises:
             LLMContentFilterError: If the response was blocked by safety filters.
         """
-        content = raw.text or ""
+        content_parts: list[str] = []
+        thinking_parts: list[str] = []
+
+        if raw.candidates:
+            for part in raw.candidates[0].content.parts:
+                if hasattr(part, "thought") and part.thought:
+                    if part.text:
+                        thinking_parts.append(part.text)
+                elif part.text:
+                    content_parts.append(part.text)
+
+        content = "".join(content_parts) if content_parts else ""
 
         finish_reason = FinishReason.UNKNOWN
         if raw.candidates:
@@ -655,9 +710,13 @@ class GeminiProvider(LLMProvider):
 
         usage = TokenUsage.empty()
         if raw.usage_metadata is not None:
+            thinking_toks = (
+                getattr(raw.usage_metadata, "thoughts_token_count", None) or 0
+            )
             usage = TokenUsage(
                 prompt_tokens=raw.usage_metadata.prompt_token_count or 0,
                 completion_tokens=raw.usage_metadata.candidates_token_count or 0,
+                thinking_tokens=thinking_toks,
                 total_tokens=raw.usage_metadata.total_token_count or 0,
             )
 
@@ -667,6 +726,7 @@ class GeminiProvider(LLMProvider):
 
         return LLMResponse(
             content=content,
+            thinking_content="".join(thinking_parts),
             finish_reason=finish_reason,
             usage=usage,
             model=model_version,

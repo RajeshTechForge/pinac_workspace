@@ -47,6 +47,7 @@ from ..base import (
     ProviderType,
     RetryPolicy,
     StreamChunk,
+    ThinkingConfig,
     TokenUsage,
 )
 from ..exceptions import (
@@ -149,7 +150,7 @@ class OpenAIConfig:
                 any provider-level defaults from "config.toml").
 
         Returns:
-            A fully validated :class:`OpenAIConfig` instance.
+            A fully validated :class:'OpenAIConfig' instance.
 
         Raises:
             LLMProviderInitError: If required fields are missing or invalid.
@@ -192,6 +193,7 @@ class OpenAIProvider(LLMProvider):
         supports_system_prompt=True,
         supports_tool_calling=True,
         supports_vision=True,
+        supports_thinking=True,
         max_context_tokens=_MAX_CONTEXT_TOKENS,
         provider_type=ProviderType.OPENAI,
     )
@@ -208,7 +210,7 @@ class OpenAIProvider(LLMProvider):
         """Initialize the OpenAIProvider.
 
         Args:
-            config: Either an :class:`OpenAIConfig` instance or a raw
+            config: Either an :class:'OpenAIConfig' instance or a raw
                 dictionary that will be coerced into one.
         """
         if isinstance(config, dict):
@@ -296,9 +298,9 @@ class OpenAIProvider(LLMProvider):
     async def _init_client_only(self) -> None:
         """Create the AsyncOpenAI HTTP client without running a credential probe.
 
-        Intended for use by :class:`~src.services.llm.byok.BYOKLLMService` so that
+        Intended for use by :class:'~src.services.llm.byok.BYOKLLMService' so that
         authentication errors surface from the first inference call rather than
-        from a pre-flight ``models.list`` probe, avoiding extra latency and
+        from a pre-flight "models.list" probe, avoiding extra latency and
         billable probe requests for each BYOK user key.
 
         Raises:
@@ -335,7 +337,7 @@ class OpenAIProvider(LLMProvider):
             request: The generation request containing messages and parameters.
 
         Returns:
-            A populated :class:`LLMResponse`.
+            A populated :class:'LLMResponse'.
 
         Raises:
             LLMTimeoutError: If the request exceeds the configured timeout.
@@ -349,15 +351,17 @@ class OpenAIProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         messages = self._build_message_list(request.messages)
+        thinking_kwargs = self._build_thinking_params(request.thinking)
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "OpenAI complete | model=%s messages=%d",
+            "OpenAI complete | model=%s messages=%d thinking=%s",
             model,
             len(messages),
+            bool(thinking_kwargs),
         )
 
         try:
@@ -365,11 +369,13 @@ class OpenAIProvider(LLMProvider):
                 self._client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    max_tokens=request.max_tokens,
+                    # reasoning models require max_completion_tokens.
+                    max_completion_tokens=request.max_tokens,
                     temperature=request.temperature,
                     top_p=request.top_p,
                     stop=request.stop_sequences or None,
                     stream=False,
+                    **thinking_kwargs,
                 ),
                 timeout=timeout,
             )
@@ -392,7 +398,7 @@ class OpenAIProvider(LLMProvider):
             request: The streaming generation request.
 
         Yields:
-            :class:`StreamChunk` objects for each token delta, with a final
+            :class:'StreamChunk' objects for each token delta, with a final
             sentinel chunk containing aggregated usage and metadata.
 
         Raises:
@@ -407,14 +413,16 @@ class OpenAIProvider(LLMProvider):
 
         model = request.model or self._cfg.model
         messages = self._build_message_list(request.messages)
+        thinking_kwargs = self._build_thinking_params(request.thinking)
         timeout = (
             request.timeout if request.timeout is not None else self._cfg.timeout_s
         )
         start = time.monotonic()
 
         logger.debug(
-            "OpenAI stream | model=%s",
+            "OpenAI stream | model=%s thinking=%s",
             model,
+            bool(thinking_kwargs),
         )
 
         finish_reason = FinishReason.UNKNOWN
@@ -426,10 +434,12 @@ class OpenAIProvider(LLMProvider):
                 async with self._client.chat.completions.stream(
                     model=model,
                     messages=messages,
-                    max_tokens=request.max_tokens,
+                    # reasoning models require max_completion_tokens.
+                    max_completion_tokens=request.max_tokens,
                     temperature=request.temperature,
                     top_p=request.top_p,
                     stop=request.stop_sequences or None,
+                    **thinking_kwargs,
                 ) as stream_mgr:
                     async for chunk in stream_mgr:
                         chunk: ChatCompletionChunk
@@ -451,9 +461,17 @@ class OpenAIProvider(LLMProvider):
 
                         # Stream-level usage arrives in the final chunk's usage field.
                         if chunk.usage is not None:
+                            thinking_toks = 0
+                            comp_toks = chunk.usage.completion_tokens or 0
+                            if hasattr(chunk.usage, "completion_tokens_details"):
+                                details = chunk.usage.completion_tokens_details
+                                if details and hasattr(details, "reasoning_tokens"):
+                                    thinking_toks = details.reasoning_tokens or 0
+                                    comp_toks = comp_toks - thinking_toks
                             usage = TokenUsage(
                                 prompt_tokens=chunk.usage.prompt_tokens or 0,
-                                completion_tokens=chunk.usage.completion_tokens or 0,
+                                completion_tokens=comp_toks,
+                                thinking_tokens=thinking_toks,
                                 total_tokens=chunk.usage.total_tokens or 0,
                             )
 
@@ -544,7 +562,7 @@ class OpenAIProvider(LLMProvider):
     def _build_message_list(
         messages: list[Message],
     ) -> list[dict[str, str]]:
-        """Serialize :class:`Message` objects to the OpenAI wire format.
+        """Serialize :class:'Message' objects to the OpenAI wire format.
 
         OpenAI's Chat Completions API accepts system prompts inline as
         "{"role": "system", "content": "..."}" messages, so no
@@ -559,12 +577,42 @@ class OpenAIProvider(LLMProvider):
         return [msg.to_dict() for msg in messages]
 
     @staticmethod
+    def _build_thinking_params(
+        thinking: ThinkingConfig | None,
+    ) -> dict[str, str]:
+        """Map a domain ThinkingConfig to OpenAI SDK keyword arguments.
+
+        OpenAI models are always reasoning-capable — there is no on/off
+        toggle. This method maps the thinking config to the
+        "reasoning_effort" parameter.
+
+        Precedence:
+            1. "provider_options["effort"]"
+            2. Normalized "thinking.effort"
+            3. Omitted (let the model decide)
+
+        Args:
+            thinking: The domain thinking configuration, or None.
+
+        Returns:
+            A dict of SDK keyword arguments (may be empty).
+        """
+        if thinking is None or not thinking.enabled:
+            return {}
+
+        opts = thinking.provider_options or {}
+        effort = opts.get("effort") or thinking.effort
+        if effort:
+            return {"reasoning_effort": str(effort)}
+        return {}
+
+    @staticmethod
     def _build_response(
         raw: ChatCompletion,
         request: LLMRequest,
         start: float,
     ) -> LLMResponse:
-        """Map an OpenAI :class:`ChatCompletion` to an :class:`LLMResponse`.
+        """Map an OpenAI :class:'ChatCompletion' to an :class:'LLMResponse'.
 
         Args:
             raw: The native SDK response object.
@@ -572,7 +620,7 @@ class OpenAIProvider(LLMProvider):
             start: The "time.monotonic()" timestamp when the call started.
 
         Returns:
-            A populated :class:`LLMResponse` domain object.
+            A populated :class:'LLMResponse' domain object.
         """
         choice = raw.choices[0] if raw.choices else None
         content = (
@@ -589,9 +637,17 @@ class OpenAIProvider(LLMProvider):
 
         usage = TokenUsage.empty()
         if raw.usage is not None:
+            thinking_toks = 0
+            comp_toks = raw.usage.completion_tokens or 0
+            if hasattr(raw.usage, "completion_tokens_details"):
+                details = raw.usage.completion_tokens_details
+                if details and hasattr(details, "reasoning_tokens"):
+                    thinking_toks = details.reasoning_tokens or 0
+                    comp_toks = comp_toks - thinking_toks
             usage = TokenUsage(
                 prompt_tokens=raw.usage.prompt_tokens or 0,
-                completion_tokens=raw.usage.completion_tokens or 0,
+                completion_tokens=comp_toks,
+                thinking_tokens=thinking_toks,
                 total_tokens=raw.usage.total_tokens or 0,
             )
 

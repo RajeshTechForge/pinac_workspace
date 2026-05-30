@@ -3,10 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from nexus.services.llm.base import LLMRequest, ProviderType
-from nexus.services.llm.schemas import LLMResponseSchema, MessageSchema
+from nexus.services.llm.schemas import (
+    LLMResponseSchema,
+    MessageSchema,
+    ThinkingConfigSchema,
+)
 
 
 class BaseSchema(BaseModel):
@@ -72,6 +76,32 @@ class ChatRequest(BaseSchema):
     timeout: float | None = Field(
         default=30.0, ge=1.0, le=600.0, description="Request timeout in seconds."
     )
+    thinking: ThinkingConfigSchema | None = Field(
+        default=None,
+        description=(
+            "Thinking/reasoning configuration. When omitted, no thinking "
+            "parameters are sent to the provider."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def thinking_provider_must_match(self) -> "ChatRequest":
+        """Ensure provider_options.provider matches the top-level provider field.
+
+        Raises:
+            ValueError: If the provider_options discriminator does not match.
+        """
+        if (
+            self.thinking
+            and self.thinking.provider_options
+            and self.thinking.provider_options.provider != self.provider.value
+        ):
+            raise ValueError(
+                f"thinking.provider_options.provider "
+                f"('{self.thinking.provider_options.provider}') must match "
+                f"the top-level provider ('{self.provider.value}')."
+            )
+        return self
 
     def to_llm_request(self) -> LLMRequest:
         """Convert to the internal LLMRequest domain object."""
@@ -84,6 +114,7 @@ class ChatRequest(BaseSchema):
             stop_sequences=self.stop_sequences,
             stream=self.stream,
             timeout=self.timeout,
+            thinking=self.thinking.to_domain() if self.thinking else None,
         )
 
 
