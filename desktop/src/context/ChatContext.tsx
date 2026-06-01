@@ -45,6 +45,8 @@ function createInitialState(): ChatState {
       topP: 0.95,
       timeout: 30,
       provider: "",
+      thinkingEnabled: false,
+      thinkingEffort: "",
     },
   };
 }
@@ -183,7 +185,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, activeSettingsTab: action.payload };
 
     case "SET_PROVIDERS": {
-      let { provider, defaultModel } = state.settings;
+      let { provider, defaultModel, thinkingEffort } = state.settings;
+      let thinkingEnabled = state.settings.thinkingEnabled;
       if (!provider) {
         provider = action.payload.defaultProvider;
         const found = action.payload.providers.find(
@@ -193,10 +196,28 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           defaultModel = found.defaultModel;
         }
       }
+      // Set default thinking effort from the current model's config.
+      if (!thinkingEffort) {
+        const curProvider = action.payload.providers.find(
+          (p) => p.value === provider,
+        );
+        const curModel = curProvider?.models.find(
+          (m) => m.id === defaultModel,
+        );
+        if (curModel?.thinking) {
+          thinkingEffort = curModel.thinking.defaultEffort;
+        }
+      }
       return {
         ...state,
         providers: action.payload.providers,
-        settings: { ...state.settings, provider, defaultModel },
+        settings: {
+          ...state.settings,
+          provider,
+          defaultModel,
+          thinkingEnabled,
+          thinkingEffort,
+        },
       };
     }
 

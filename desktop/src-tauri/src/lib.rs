@@ -6,11 +6,23 @@ mod db;
 mod llm;
 mod secure_storage;
 
+/// Per-model thinking/reasoning configuration from config.toml.
+/// `mode` is one of "adaptive", "enabled", "effort", or "level".
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ThinkingConfig {
+    mode: String,
+    efforts: Vec<String>,
+    default_effort: String,
+}
+
 /// A single LLM provider entry as stored in `config.toml`.
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct LlmModel {
     id: String,
     name: String,
+    thinking: Option<ThinkingConfig>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

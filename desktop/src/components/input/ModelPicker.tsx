@@ -26,7 +26,20 @@ export default function ModelPicker() {
   }, []);
 
   function handleSelect(modelId: string): void {
-    dispatch({ type: "UPDATE_SETTINGS", payload: { defaultModel: modelId } });
+    const newModel = currentProvider?.models.find((m) => m.id === modelId);
+    const newThinkingConfig = newModel?.thinking;
+    const newThinkingEffort = newThinkingConfig?.defaultEffort ?? "";
+    const newThinkingEnabled =
+      state.settings.thinkingEnabled && newThinkingConfig !== undefined;
+
+    dispatch({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        defaultModel: modelId,
+        thinkingEnabled: newThinkingEnabled,
+        thinkingEffort: newThinkingEffort,
+      },
+    });
 
     saveLlmSettings({
       provider: state.settings.provider,
@@ -35,6 +48,8 @@ export default function ModelPicker() {
       maxTokens: state.settings.maxTokens,
       topP: state.settings.topP,
       timeout: state.settings.timeout,
+      thinkingEnabled: newThinkingEnabled,
+      thinkingEffort: newThinkingEffort,
     });
 
     setOpen(false);

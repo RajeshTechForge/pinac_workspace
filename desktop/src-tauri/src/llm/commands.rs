@@ -13,6 +13,61 @@ const STREAM_CHUNK_EVENT: &str = "llm-stream-chunk";
 const STREAM_ERROR_EVENT: &str = "llm-stream-error";
 
 // ---------------------------------------------------------------------------
+// Thinking helpers
+// ---------------------------------------------------------------------------
+
+/// Maps an effort label to a fixed budget token count for Anthropic "enabled"
+/// (legacy budget) mode.
+fn budget_for_effort(effort: &str) -> u32 {
+    match effort {
+        "low" => 2048,
+        "medium" => 8192,
+        "high" => 16384,
+        _ => 8192,
+    }
+}
+
+/// Builds the `provider_options` JSON value based on the provider and its
+/// thinking mode.
+fn build_provider_options(
+    provider: &str,
+    mode: &str,
+    effort: &str,
+) -> serde_json::Value {
+    match provider {
+        "anthropic" => match mode {
+            "adaptive" => serde_json::json!({
+                "provider": "anthropic",
+                "thinking_type": "adaptive",
+                "effort": effort,
+            }),
+            "enabled" => serde_json::json!({
+                "provider": "anthropic",
+                "thinking_type": "enabled",
+                "budget_tokens": budget_for_effort(effort),
+            }),
+            _ => serde_json::json!({
+                "provider": "anthropic",
+                "thinking_type": mode,
+                "effort": effort,
+            }),
+        },
+        "openai" => serde_json::json!({
+            "provider": "openai",
+            "effort": effort,
+        }),
+        "gemini" => serde_json::json!({
+            "provider": "gemini",
+            "level": effort,
+        }),
+        _ => serde_json::json!({
+            "provider": provider,
+            "effort": effort,
+        }),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Shared request builder
 // ---------------------------------------------------------------------------
 
@@ -30,8 +85,27 @@ fn build_request(
     top_p: f64,
     timeout: f64,
     stream: bool,
+    thinking_enabled: bool,
+    thinking_mode: String,
+    thinking_effort: String,
 ) -> Result<ChatRequest, String> {
     let api_key = secure_storage::load_and_decrypt(app, key_name).map_err(String::from)?;
+
+    let mut thinking: Option<serde_json::Value> = None;
+    let mut temp: Option<f64> = Some(temperature);
+
+    if thinking_enabled {
+        let provider_opts = build_provider_options(&provider, &thinking_mode, &thinking_effort);
+        thinking = Some(serde_json::json!({
+            "enabled": true,
+            "provider_options": provider_opts,
+        }));
+        // Anthropic requires temperature to be omitted when thinking is active.
+        if provider == "anthropic" {
+            temp = None;
+        }
+    }
+
     Ok(ChatRequest {
         provider,
         api_key,
@@ -39,10 +113,11 @@ fn build_request(
         messages,
         stream,
         max_tokens,
-        temperature,
+        temperature: temp,
         top_p,
         stop_sequences: vec![],
         timeout,
+        thinking,
     })
 }
 
@@ -63,6 +138,9 @@ pub async fn llm_chat(
     temperature: f64,
     top_p: f64,
     timeout: f64,
+    thinking_enabled: bool,
+    thinking_mode: String,
+    thinking_effort: String,
 ) -> Result<ChatResponse, String> {
     let req = build_request(
         &app,
@@ -75,6 +153,9 @@ pub async fn llm_chat(
         top_p,
         timeout,
         false,
+        thinking_enabled,
+        thinking_mode,
+        thinking_effort,
     )?;
     let client = LlmClient::new();
     client.chat_blocking(req).await.map_err(String::from)
@@ -93,6 +174,9 @@ pub async fn llm_chat_stream(
     temperature: f64,
     top_p: f64,
     timeout: f64,
+    thinking_enabled: bool,
+    thinking_mode: String,
+    thinking_effort: String,
 ) -> Result<(), String> {
     let req = build_request(
         &app,
@@ -105,6 +189,9 @@ pub async fn llm_chat_stream(
         top_p,
         timeout,
         true,
+        thinking_enabled,
+        thinking_mode,
+        thinking_effort,
     )?;
     let client = LlmClient::new();
     client

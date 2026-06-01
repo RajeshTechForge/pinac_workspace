@@ -87,6 +87,20 @@ export default function LLMTab() {
             state.settings.defaultModel)
           : state.settings.defaultModel;
 
+      const providerChanged = provider !== state.settings.provider;
+      const newModel = state.providers
+        .find((p) => p.value === provider)
+        ?.models.find((m) => m.id === modelToSave);
+      const newThinkingConfig = newModel?.thinking;
+      const newThinkingEffort =
+        providerChanged || state.settings.thinkingEffort === ""
+          ? (newThinkingConfig?.defaultEffort ?? "")
+          : state.settings.thinkingEffort;
+      const newThinkingEnabled =
+        providerChanged
+          ? false
+          : state.settings.thinkingEnabled && newThinkingConfig !== undefined;
+
       saveLlmSettings({
         provider,
         defaultModel: modelToSave,
@@ -94,6 +108,8 @@ export default function LLMTab() {
         maxTokens,
         topP,
         timeout,
+        thinkingEnabled: newThinkingEnabled,
+        thinkingEffort: newThinkingEffort,
       });
 
       dispatch({
@@ -106,6 +122,8 @@ export default function LLMTab() {
           topP,
           timeout,
           apiKeySaved: keyIsSaved || apiKeyInput.trim().length > 0,
+          thinkingEnabled: newThinkingEnabled,
+          thinkingEffort: newThinkingEffort,
         },
       });
     } catch (err) {

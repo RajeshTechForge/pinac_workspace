@@ -5,6 +5,8 @@ export type LlmSettingsPayload = {
   maxTokens: number;
   topP: number;
   timeout: number;
+  thinkingEnabled: boolean;
+  thinkingEffort: string;
 };
 
 const STORAGE_KEY = "pinac-llm-settings";
@@ -28,7 +30,9 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
       typeof obj["temperature"] !== "number" ||
       typeof obj["maxTokens"] !== "number" ||
       typeof obj["topP"] !== "number" ||
-      typeof obj["timeout"] !== "number"
+      typeof obj["timeout"] !== "number" ||
+      typeof obj["thinkingEnabled"] !== "boolean" ||
+      typeof obj["thinkingEffort"] !== "string"
     ) {
       return null;
     }
@@ -40,6 +44,8 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
       maxTokens: obj["maxTokens"],
       topP: obj["topP"],
       timeout: obj["timeout"],
+      thinkingEnabled: obj["thinkingEnabled"],
+      thinkingEffort: obj["thinkingEffort"],
     };
   } catch {
     return null;

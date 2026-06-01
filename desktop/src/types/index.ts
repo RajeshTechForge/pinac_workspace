@@ -41,9 +41,16 @@ export type ChatState = {
   providers: LlmProvider[];
 };
 
+export type ThinkingConfig = {
+  mode: string;
+  efforts: string[];
+  defaultEffort: string;
+};
+
 export type LlmModel = {
   id: string;
   name: string;
+  thinking?: ThinkingConfig;
 };
 
 export type LlmProvider = {
@@ -73,6 +80,8 @@ export type AppSettings = {
   topP: number;
   timeout: number;
   provider: string;
+  thinkingEnabled: boolean;
+  thinkingEffort: string;
 };
 
 export type PaletteCommand = {

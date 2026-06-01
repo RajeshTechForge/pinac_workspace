@@ -34,6 +34,9 @@ export function useChat() {
       const model = state.settings.defaultModel;
       if (!currentProvider || !model) return;
 
+      const currentModel = currentProvider.models.find((m) => m.id === model);
+      const thinkingMode = currentModel?.thinking?.mode ?? "";
+
       const history = [
         ...state.activeMessages.map((m) => ({
           role: m.role as "user" | "assistant",
@@ -105,6 +108,9 @@ export function useChat() {
           temperature: state.settings.temperature,
           topP: state.settings.topP,
           timeout: state.settings.timeout,
+          thinkingEnabled: state.settings.thinkingEnabled,
+          thinkingMode,
+          thinkingEffort: state.settings.thinkingEffort,
         },
         // ── onChunk ──────────────────────────────────────────────────────
         (delta, isFinal) => {

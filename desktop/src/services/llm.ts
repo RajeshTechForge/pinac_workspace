@@ -15,6 +15,9 @@ export type LlmStreamPayload = {
   temperature: number;
   topP: number;
   timeout: number;
+  thinkingEnabled: boolean;
+  thinkingMode: string;
+  thinkingEffort: string;
 };
 
 type StreamChunk = {
@@ -59,6 +62,9 @@ export async function streamLlmResponse(
     temperature: payload.temperature,
     topP: payload.topP,
     timeout: payload.timeout,
+    thinkingEnabled: payload.thinkingEnabled,
+    thinkingMode: payload.thinkingMode,
+    thinkingEffort: payload.thinkingEffort,
   }).catch((err: unknown) => {
     onError(
       typeof err === "string"
