@@ -119,6 +119,7 @@ export type ChatAction =
   | { type: "UPDATE_SETTINGS"; payload: Partial<AppSettings> }
   | { type: "TOGGLE_SETTINGS" }
   | { type: "SET_SETTINGS_TAB"; payload: "profile" | "llm" }
+  | { type: "NEW_CHAT" }
   | { type: "CLEAR_CONVERSATION"; payload: string }
   | {
       type: "SET_PROVIDERS";

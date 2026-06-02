@@ -1,25 +1,16 @@
 import { Plus, PanelLeftClose } from "lucide-react";
 import { useChatContext } from "../../context/ChatContext";
 import Tooltip from "../ui/Tooltip";
-import type { ConversationMeta } from "../../types";
 
 type SidebarHeaderProps = {
   compact: boolean;
 };
 
 export default function SidebarHeader({ compact }: SidebarHeaderProps) {
-  const { state, dispatch } = useChatContext();
+  const { dispatch } = useChatContext();
 
   function newChat() {
-    const newMeta: ConversationMeta = {
-      id: `conv-${Date.now()}`,
-      title: "New conversation",
-      model: state.settings.defaultModel,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      pinned: false,
-    };
-    dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
+    dispatch({ type: "NEW_CHAT" });
   }
 
   function toggleSidebar() {

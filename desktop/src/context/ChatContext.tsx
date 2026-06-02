@@ -163,6 +163,16 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       };
     }
 
+    case "NEW_CHAT":
+      return {
+        ...state,
+        activeConversationId: null,
+        activeMessages: [],
+        messagesLoading: false,
+        sidebarSearch: "",
+        settingsOpen: false,
+      };
+
     case "CLEAR_CONVERSATION":
       return {
         ...state,

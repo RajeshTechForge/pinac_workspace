@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useChatContext } from "../context/ChatContext";
-import type { ConversationMeta } from "../types";
 
 export function useKeyboardShortcuts() {
   const { state, dispatch } = useChatContext();
@@ -30,15 +29,7 @@ export function useKeyboardShortcuts() {
 
       if (isMeta && e.key === "n") {
         e.preventDefault();
-        const newMeta: ConversationMeta = {
-          id: `conv-${Date.now()}`,
-          title: "New conversation",
-          model: state.settings.defaultModel,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          pinned: false,
-        };
-        dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
+        dispatch({ type: "NEW_CHAT" });
         return;
       }
 
@@ -54,5 +45,5 @@ export function useKeyboardShortcuts() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [state.commandPaletteOpen, state.settingsOpen, state.sidebarMode, state.settings.defaultModel, dispatch]);
+  }, [state.commandPaletteOpen, state.settingsOpen, state.sidebarMode, dispatch]);
 }

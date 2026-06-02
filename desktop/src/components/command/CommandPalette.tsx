@@ -28,15 +28,7 @@ export default function CommandPalette() {
         icon: "new-chat",
         category: "action",
         action: () => {
-          const newMeta: ConversationMeta = {
-            id: `conv-${Date.now()}`,
-            title: "New conversation",
-            model: state.settings.defaultModel,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            pinned: false,
-          };
-          dispatch({ type: "APPEND_CONVERSATION_META", payload: newMeta });
+          dispatch({ type: "NEW_CHAT" });
           dispatch({ type: "TOGGLE_COMMAND_PALETTE" });
         },
       },
@@ -77,7 +69,7 @@ export default function CommandPalette() {
         },
       },
     ],
-    [state.activeConversationId, state.settings.defaultModel, dispatch],
+    [state.activeConversationId, dispatch],
   );
 
   const conversationCommands: PaletteCommand[] = useMemo(

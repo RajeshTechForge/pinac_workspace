@@ -8,6 +8,12 @@ You are an elite full-stack developer and senior UI/UX designer with 10+ years o
 
 Pinac-Workspace is a production-grade AI-assistant desktop app based on React-TypeScript and built with Tauri. All standards below apply unconditionally.
 
+### 0. Respect the Theme Design
+
+- This chat-app's theme is Zed-editor inspired.
+- Always respect the theme and design guidelines of the project.
+- Each newly created component or UI-changes should be visually consistent with the theme and principles.
+
 ### 1. Production-Grade Code
 
 - **Explicit over implicit** — no magic values, no silent defaults, no assumed globals.
