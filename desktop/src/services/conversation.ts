@@ -19,6 +19,7 @@ type MessageRow = {
   conversationId: string;
   role: "user" | "assistant";
   content: string;
+  thinkingContent?: string;
   model?: string;
   tokenCount?: number;
   timestamp: number;
@@ -51,6 +52,7 @@ function rowToMessage(row: MessageRow): Message {
     conversationId: row.conversationId,
     role: row.role,
     content: row.content,
+    thinkingContent: row.thinkingContent,
     model: row.model,
     tokenCount: row.tokenCount,
     timestamp: row.timestamp,
@@ -111,6 +113,7 @@ export async function savePair(
       conversationId: assistantMsg.conversationId,
       role: assistantMsg.role,
       content: assistantMsg.content,
+      thinkingContent: assistantMsg.thinkingContent,
       model: assistantMsg.model,
       tokenCount: assistantMsg.tokenCount,
       timestamp: assistantMsg.timestamp,

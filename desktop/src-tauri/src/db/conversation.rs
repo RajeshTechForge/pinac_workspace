@@ -34,7 +34,7 @@ pub fn list_conversations(conn: &Connection) -> Result<Vec<ConversationRow>, Str
 pub fn get_messages(conn: &Connection, conv_id: &str) -> Result<Vec<MessageRow>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, conversation_id, role, content, model, token_count, timestamp
+            "SELECT id, conversation_id, role, content, thinking_content, model, token_count, timestamp
              FROM messages
              WHERE conversation_id = ?1
              ORDER BY timestamp ASC",
@@ -48,9 +48,10 @@ pub fn get_messages(conn: &Connection, conv_id: &str) -> Result<Vec<MessageRow>,
                 conversation_id: row.get(1)?,
                 role: row.get(2)?,
                 content: row.get(3)?,
-                model: row.get(4)?,
-                token_count: row.get(5)?,
-                timestamp: row.get(6)?,
+                thinking_content: row.get(4)?,
+                model: row.get(5)?,
+                token_count: row.get(6)?,
+                timestamp: row.get(7)?,
             })
         })
         .map_err(|e| format!("Failed to execute get_messages: {e}"))?;
@@ -93,13 +94,14 @@ pub fn save_pair(
 fn insert_message(conn: &Connection, msg: &MessageRow) -> Result<(), String> {
     conn.execute(
         "INSERT OR IGNORE INTO messages
-             (id, conversation_id, role, content, model, token_count, timestamp)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             (id, conversation_id, role, content, thinking_content, model, token_count, timestamp)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             msg.id,
             msg.conversation_id,
             msg.role,
             msg.content,
+            msg.thinking_content,
             msg.model,
             msg.token_count,
             msg.timestamp,

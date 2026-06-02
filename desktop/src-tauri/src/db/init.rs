@@ -63,5 +63,23 @@ fn run_migrations(conn: &Connection) -> Result<(), String> {
             ON conversations(updated_at DESC);
         ",
     )
-    .map_err(|e| format!("Schema migration failed: {e}"))
+    .map_err(|e| format!("Schema migration failed: {e}"))?;
+
+    // Migration 1: add thinking_content column for storing LLM reasoning text.
+    let has_thinking: bool = conn
+        .prepare(
+            "SELECT COUNT(*) FROM pragma_table_info('messages') WHERE name = 'thinking_content'",
+        )
+        .and_then(|mut s| s.query_row([], |r| r.get::<_, i64>(0)))
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if !has_thinking {
+        conn.execute_batch(
+            "ALTER TABLE messages ADD COLUMN thinking_content TEXT NOT NULL DEFAULT '';",
+        )
+        .map_err(|e| format!("Migration 1 (add thinking_content) failed: {e}"))?;
+    }
+
+    Ok(())
 }

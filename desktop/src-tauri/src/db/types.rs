@@ -18,6 +18,8 @@ pub struct MessageRow {
     pub conversation_id: String,
     pub role: String,
     pub content: String,
+    #[serde(default)]
+    pub thinking_content: String,
     pub model: Option<String>,
     pub token_count: Option<i32>,
     pub timestamp: i64,
