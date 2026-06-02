@@ -9,6 +9,7 @@ interface MessageListProps {
   isStreaming: boolean;
   streamingMessageId: string | null;
   streamingText: string;
+  streamingThinkingText: string;
 }
 
 export default function MessageList({
@@ -16,6 +17,7 @@ export default function MessageList({
   isStreaming,
   streamingMessageId,
   streamingText,
+  streamingThinkingText,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,7 +42,7 @@ export default function MessageList({
     if (!userScrolledRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, streamingText]);
+  }, [messages, streamingText, streamingThinkingText]);
 
   return (
     <ScrollArea ref={scrollRef} className="flex-1 min-h-0" role="log" aria-label="Message list">
@@ -50,6 +52,7 @@ export default function MessageList({
           message={msg}
           isStreaming={isStreaming && streamingMessageId === msg.id}
           streamingText={streamingMessageId === msg.id ? streamingText : undefined}
+          streamingThinkingText={streamingMessageId === msg.id ? streamingThinkingText : undefined}
         />
       ))}
       {isStreaming && !streamingMessageId && <StreamingIndicator />}

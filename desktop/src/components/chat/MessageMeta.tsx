@@ -26,7 +26,7 @@ export default function MessageMeta({ timestamp, model, tokenCount, role }: Mess
         <span className="text-[11px] font-mono text-text-muted">{model}</span>
       )}
       {tokenCount && (
-        <Badge>~{tokenCount} tok</Badge>
+        <Badge>{tokenCount} tok</Badge>
       )}
     </div>
   );

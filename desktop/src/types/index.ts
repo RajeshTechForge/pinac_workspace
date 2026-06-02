@@ -5,6 +5,7 @@ export type Message = {
   conversationId: string;
   role: MessageRole;
   content: string;
+  thinkingContent?: string;
   model?: string;
   tokenCount?: number;
   timestamp: number;
@@ -30,6 +31,7 @@ export type ChatState = {
   activeConversationId: string | null;
   streamingMessageId: string | null;
   streamingText: string;
+  streamingThinkingText: string;
   isStreaming: boolean;
   sidebarSearch: string;
   sidebarWidth: number;
@@ -104,11 +106,12 @@ export type ChatAction =
   | { type: "DELETE_CONVERSATION"; payload: string }
   | { type: "ADD_MESSAGE"; payload: Message }
   | { type: "APPEND_STREAM_TEXT"; payload: string }
+  | { type: "APPEND_STREAM_THINKING_TEXT"; payload: string }
   | {
       type: "SET_STREAMING";
       payload: { messageId: string | null; text: string };
     }
-  | { type: "FINISH_STREAMING"; payload?: string }
+  | { type: "FINISH_STREAMING"; payload?: { completionTokens?: number } }
   | { type: "SET_SIDEBAR_SEARCH"; payload: string }
   | { type: "SET_SIDEBAR_WIDTH"; payload: number }
   | { type: "SET_SIDEBAR_MODE"; payload: ChatState["sidebarMode"] }

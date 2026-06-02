@@ -20,7 +20,11 @@ export type LlmStreamPayload = {
 
 type StreamChunk = {
   delta: string;
+  is_thinking: boolean;
   is_final: boolean;
+  usage?: {
+    completion_tokens: number;
+  };
 };
 
 type StreamErrorPayload = {
@@ -34,13 +38,18 @@ type StreamErrorPayload = {
 
 export async function streamLlmResponse(
   payload: LlmStreamPayload,
-  onChunk: (delta: string, isFinal: boolean) => void,
+  onChunk: (delta: string, isThinking: boolean, isFinal: boolean, completionTokens?: number) => void,
   onError: (message: string) => void,
 ): Promise<() => void> {
   const unlistenChunk = await listen<StreamChunk>(
     "llm-stream-chunk",
     (event) => {
-      onChunk(event.payload.delta, event.payload.is_final);
+      onChunk(
+        event.payload.delta,
+        event.payload.is_thinking,
+        event.payload.is_final,
+        event.payload.is_final ? event.payload.usage?.completion_tokens : undefined,
+      );
     },
   );
 

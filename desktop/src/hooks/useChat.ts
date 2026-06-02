@@ -91,11 +91,13 @@ export function useChat() {
       pendingPairRef.current = { userMsg, assistantMsgId, convMeta, isFirstPair };
 
       // ── 3. Start streaming ────────────────────────────────────────────────
-      // `totalContent` accumulates every delta for the entire stream.
-      // `streamBuffer` holds only the undispatched portion for RAF batching.
-      // Both are local to this sendMessage invocation — they are never stale.
+      // `totalContent` / `totalThinkingContent` accumulate every delta for the
+      // entire stream. `streamBuffer` holds only the undispatched RAF-batched
+      // portion. All are local to this sendMessage invocation — never stale.
       let streamBuffer = "";
       let totalContent = "";
+      let thinkingBuffer = "";
+      let totalThinkingContent = "";
       let rafId: number | null = null;
 
       void streamLlmResponse(
@@ -111,18 +113,30 @@ export function useChat() {
           thinkingEffort: state.settings.thinkingEffort,
         },
         // ── onChunk ──────────────────────────────────────────────────────
-        (delta, isFinal) => {
-          streamBuffer += delta;
-          totalContent += delta;
-
-          if (rafId === null) {
-            rafId = requestAnimationFrame(() => {
-              if (streamBuffer.length > 0) {
-                dispatch({ type: "APPEND_STREAM_TEXT", payload: streamBuffer });
-                streamBuffer = "";
-              }
-              rafId = null;
+        (delta, isThinking, isFinal, completionTokens) => {
+          if (isThinking) {
+            thinkingBuffer += delta;
+            totalThinkingContent += delta;
+            dispatch({
+              type: "APPEND_STREAM_THINKING_TEXT",
+              payload: delta,
             });
+          } else {
+            streamBuffer += delta;
+            totalContent += delta;
+
+            if (rafId === null) {
+              rafId = requestAnimationFrame(() => {
+                if (streamBuffer.length > 0) {
+                  dispatch({
+                    type: "APPEND_STREAM_TEXT",
+                    payload: streamBuffer,
+                  });
+                  streamBuffer = "";
+                }
+                rafId = null;
+              });
+            }
           }
 
           if (isFinal) {
@@ -134,15 +148,18 @@ export function useChat() {
               dispatch({ type: "APPEND_STREAM_TEXT", payload: streamBuffer });
               streamBuffer = "";
             }
-            dispatch({ type: "FINISH_STREAMING", payload: undefined });
+            dispatch({
+              type: "FINISH_STREAMING",
+              payload: { completionTokens },
+            });
             unlistenRef.current?.();
             unlistenRef.current = null;
 
             // ── 4. Persist pair after streaming is complete ───────────────
-            // `totalContent` holds the complete streamed text — it is a local
-            // variable and is never stale, unlike `state.streamingText`.
+            // `totalContent` / `totalThinkingContent` hold the complete texts
+            // — they are local variables and never stale.
             // Fire-and-forget: the DB write must never gate any UI update.
-            persistPair(totalContent);
+            persistPair(totalContent, totalThinkingContent);
           }
         },
         // ── onError ──────────────────────────────────────────────────────
@@ -166,9 +183,12 @@ export function useChat() {
       });
 
       // ── Persist helper ────────────────────────────────────────────────────
-      // Reads only from `pendingPairRef` and the `finalContent` argument.
+      // Reads only from `pendingPairRef` and the argument closures below.
       // Never reads `state.*` — all required context was captured at send time.
-      function persistPair(finalContent: string): void {
+      function persistPair(
+        finalContent: string,
+        finalThinkingContent: string,
+      ): void {
         const pending = pendingPairRef.current;
         if (!pending) return;
         pendingPairRef.current = null;
@@ -182,8 +202,8 @@ export function useChat() {
           conversationId: pending.convMeta.id,
           role: "assistant",
           content: finalContent,
+          thinkingContent: finalThinkingContent || undefined,
           model,
-          tokenCount: Math.round(finalContent.split(" ").length * 1.3),
           timestamp: pending.userMsg.timestamp + 1,
         };
 

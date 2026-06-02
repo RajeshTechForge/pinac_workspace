@@ -38,6 +38,7 @@ export default function ChatArea() {
       isStreaming={state.isStreaming}
       streamingMessageId={state.streamingMessageId}
       streamingText={state.streamingText}
+      streamingThinkingText={state.streamingThinkingText}
     />
   );
 }

@@ -37,6 +37,7 @@ pub struct TokenUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
     pub total_tokens: u32,
+    pub thinking_tokens: Option<u32>,
 }
 
 /// Complete response returned by the API
@@ -61,6 +62,7 @@ pub struct ChatResponse {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StreamChunk {
     pub delta: String,
+    pub is_thinking: bool,
     pub is_final: bool,
     pub finish_reason: String,
     pub usage: TokenUsage,

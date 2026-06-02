@@ -25,6 +25,7 @@ function createInitialState(): ChatState {
     activeConversationId: null,
     streamingMessageId: null,
     streamingText: "",
+    streamingThinkingText: "",
     isStreaming: false,
     sidebarSearch: "",
     sidebarWidth: savedWidth >= 180 && savedWidth <= 400 ? savedWidth : 280,
@@ -122,6 +123,12 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "APPEND_STREAM_TEXT":
       return { ...state, streamingText: state.streamingText + action.payload };
 
+    case "APPEND_STREAM_THINKING_TEXT":
+      return {
+        ...state,
+        streamingThinkingText: state.streamingThinkingText + action.payload,
+      };
+
     case "SET_STREAMING":
       return {
         ...state,
@@ -133,18 +140,23 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "FINISH_STREAMING": {
       const messageId = state.streamingMessageId;
       if (!messageId) return state;
-      const finalText = state.streamingText;
+      const answerText = state.streamingText;
+      const thinkingText = state.streamingThinkingText;
       return {
         ...state,
         isStreaming: false,
         streamingMessageId: null,
         streamingText: "",
+        streamingThinkingText: "",
         activeMessages: state.activeMessages.map((m) =>
           m.id === messageId
             ? {
                 ...m,
-                content: finalText,
-                tokenCount: Math.round(finalText.split(" ").length * 1.3),
+                content: answerText,
+                thinkingContent: thinkingText || undefined,
+                tokenCount:
+                  action.payload?.completionTokens ??
+                  Math.round(answerText.split(" ").length * 1.3),
               }
             : m,
         ),

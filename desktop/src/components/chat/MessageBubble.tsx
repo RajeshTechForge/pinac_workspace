@@ -1,12 +1,14 @@
 import MessageMeta from "./MessageMeta";
 import CodeBlock from "./CodeBlock";
 import MarkdownContent from "./MarkdownContent";
+import ThinkingBlock from "./ThinkingBlock";
 import type { Message } from "../../types";
 
 interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
   streamingText?: string;
+  streamingThinkingText?: string;
 }
 
 function renderContent(text: string) {
@@ -37,9 +39,20 @@ function renderContent(text: string) {
   return blocks;
 }
 
-export default function MessageBubble({ message, isStreaming, streamingText }: MessageBubbleProps) {
+export default function MessageBubble({
+  message,
+  isStreaming,
+  streamingText,
+  streamingThinkingText,
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
+
   const displayContent = isStreaming ? streamingText ?? "" : message.content;
+  const displayThinking = isStreaming
+    ? streamingThinkingText ?? ""
+    : message.thinkingContent ?? "";
+
+  const isThinkingPhase = isStreaming && !!streamingThinkingText && !streamingText;
 
   return (
     <div
@@ -59,14 +72,22 @@ export default function MessageBubble({ message, isStreaming, streamingText }: M
             {isUser ? "You" : "Assistant"}
           </span>
         </div>
-        <div className="text-[14px] font-ui leading-relaxed text-text-primary">
-          {isUser
-            ? renderContent(displayContent)
-            : <MarkdownContent content={displayContent} />
-          }
-          {isStreaming && (
-            <span className="inline-block w-0.5 h-4 ml-0.5 bg-accent animate-pulse align-text-bottom" />
+        <div className="text-[14px] font-ui leading-relaxed">
+          {!isUser && !!displayThinking && (
+            <ThinkingBlock
+              content={displayThinking}
+              thinkingStreaming={isThinkingPhase}
+            />
           )}
+          <div className="text-text-primary">
+            {isUser
+              ? renderContent(displayContent)
+              : <MarkdownContent content={displayContent} />
+            }
+            {isStreaming && (
+              <span className="inline-block w-0.5 h-4 ml-0.5 bg-accent animate-pulse align-text-bottom" />
+            )}
+          </div>
         </div>
         {!isStreaming && (
           <MessageMeta
