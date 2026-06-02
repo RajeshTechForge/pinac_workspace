@@ -15,8 +15,6 @@ export default function LLMTab() {
   const [provider, setProvider] = useState(state.settings.provider);
   const [temperature, setTemperature] = useState(state.settings.temperature);
   const [maxTokens, setMaxTokens] = useState(state.settings.maxTokens);
-  const [topP, setTopP] = useState(state.settings.topP);
-  const [timeout, setTimeout] = useState(state.settings.timeout);
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [keyIsSaved, setKeyIsSaved] = useState(false);
@@ -42,8 +40,6 @@ export default function LLMTab() {
       setProvider(stored.provider);
       setTemperature(stored.temperature);
       setMaxTokens(stored.maxTokens);
-      setTopP(stored.topP);
-      setTimeout(stored.timeout);
     }
   }, []);
 
@@ -106,8 +102,6 @@ export default function LLMTab() {
         defaultModel: modelToSave,
         temperature,
         maxTokens,
-        topP,
-        timeout,
         thinkingEnabled: newThinkingEnabled,
         thinkingEffort: newThinkingEffort,
       });
@@ -119,8 +113,6 @@ export default function LLMTab() {
           defaultModel: modelToSave,
           temperature,
           maxTokens,
-          topP,
-          timeout,
           apiKeySaved: keyIsSaved || apiKeyInput.trim().length > 0,
           thinkingEnabled: newThinkingEnabled,
           thinkingEffort: newThinkingEffort,
@@ -137,8 +129,6 @@ export default function LLMTab() {
     provider !== state.settings.provider ||
     temperature !== state.settings.temperature ||
     maxTokens !== state.settings.maxTokens ||
-    topP !== state.settings.topP ||
-    timeout !== state.settings.timeout ||
     apiKeyInput.trim().length > 0;
 
   if (state.providers.length === 0) {
@@ -236,42 +226,6 @@ export default function LLMTab() {
           onChange={(e) =>
             setMaxTokens(clamp(Number(e.target.value), 256, 8192))
           }
-          className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 text-sm text-text-primary font-ui placeholder-text-muted outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100"
-        />
-      </div>
-
-      {/* Top P */}
-      <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">
-          Top P: {topP.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={topP}
-          onChange={(e) => setTopP(Number(e.target.value))}
-          className="w-full accent-accent h-1.5 cursor-pointer"
-        />
-        <div className="flex justify-between text-[10px] font-ui text-text-muted mt-0.5">
-          <span>Focused (0.0)</span>
-          <span>Diverse (1.0)</span>
-        </div>
-      </div>
-
-      {/* Timeout */}
-      <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">
-          Request Timeout (seconds)
-        </label>
-        <input
-          type="number"
-          min="5"
-          max="120"
-          step="5"
-          value={timeout}
-          onChange={(e) => setTimeout(clamp(Number(e.target.value), 5, 120))}
           className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 text-sm text-text-primary font-ui placeholder-text-muted outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100"
         />
       </div>

@@ -21,7 +21,6 @@ pub struct ChatRequest {
     pub max_tokens: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    pub top_p: f64,
     pub stop_sequences: Vec<String>,
     pub timeout: f64,
     #[serde(skip_serializing_if = "Option::is_none")]

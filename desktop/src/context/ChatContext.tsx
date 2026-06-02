@@ -42,8 +42,6 @@ function createInitialState(): ChatState {
       apiKeySaved: false,
       temperature: 0.7,
       maxTokens: 2048,
-      topP: 0.95,
-      timeout: 30,
       provider: "",
       thinkingEnabled: false,
       thinkingEffort: "",

@@ -3,8 +3,6 @@ export type LlmSettingsPayload = {
   defaultModel: string;
   temperature: number;
   maxTokens: number;
-  topP: number;
-  timeout: number;
   thinkingEnabled: boolean;
   thinkingEffort: string;
 };
@@ -29,8 +27,6 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
       typeof obj["defaultModel"] !== "string" ||
       typeof obj["temperature"] !== "number" ||
       typeof obj["maxTokens"] !== "number" ||
-      typeof obj["topP"] !== "number" ||
-      typeof obj["timeout"] !== "number" ||
       typeof obj["thinkingEnabled"] !== "boolean" ||
       typeof obj["thinkingEffort"] !== "string"
     ) {
@@ -42,8 +38,6 @@ export function loadLlmSettings(): LlmSettingsPayload | null {
       defaultModel: obj["defaultModel"],
       temperature: obj["temperature"],
       maxTokens: obj["maxTokens"],
-      topP: obj["topP"],
-      timeout: obj["timeout"],
       thinkingEnabled: obj["thinkingEnabled"],
       thinkingEffort: obj["thinkingEffort"],
     };

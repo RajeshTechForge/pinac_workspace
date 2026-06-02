@@ -16,8 +16,16 @@ const STREAM_ERROR_EVENT: &str = "llm-stream-error";
 // Thinking helpers
 // ---------------------------------------------------------------------------
 
-/// Maps an effort label to a fixed budget token count for Anthropic "enabled"
-/// (legacy budget) mode.
+/// Default request timeout
+const DEFAULT_TIMEOUT: f64 = 60.0;
+const DEFAULT_THINKING_TIMEOUT: f64 = 180.0;
+
+/// Hardcoded max_tokens used when thinking is active. User-configured max_tokens
+/// only applies to non-thinking requests.
+const THINKING_MAX_TOKENS: u32 = 16000;
+
+/// Maps an effort label to a fixed budget token count for
+///  Anthropic "enabled"(legacy budget) mode.
 fn budget_for_effort(effort: &str) -> u32 {
     match effort {
         "low" => 2048,
@@ -27,13 +35,8 @@ fn budget_for_effort(effort: &str) -> u32 {
     }
 }
 
-/// Builds the `provider_options` JSON value based on the provider and its
-/// thinking mode.
-fn build_provider_options(
-    provider: &str,
-    mode: &str,
-    effort: &str,
-) -> serde_json::Value {
+/// Builds the `provider_options` JSON value based on the provider
+fn build_provider_options(provider: &str, mode: &str, effort: &str) -> serde_json::Value {
     match provider {
         "anthropic" => match mode {
             "adaptive" => serde_json::json!({
@@ -82,8 +85,6 @@ fn build_request(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
-    top_p: f64,
-    timeout: f64,
     stream: bool,
     thinking_enabled: bool,
     thinking_mode: String,
@@ -91,6 +92,17 @@ fn build_request(
 ) -> Result<ChatRequest, String> {
     let api_key = secure_storage::load_and_decrypt(app, key_name).map_err(String::from)?;
 
+    // When thinking is active, override max_tokens with the hardcoded constant;
+    let effective_max_tokens = if thinking_enabled {
+        THINKING_MAX_TOKENS
+    } else {
+        max_tokens
+    };
+    let timeout = if thinking_enabled {
+        DEFAULT_THINKING_TIMEOUT
+    } else {
+        DEFAULT_TIMEOUT
+    };
     let mut thinking: Option<serde_json::Value> = None;
     let mut temp: Option<f64> = Some(temperature);
 
@@ -112,11 +124,10 @@ fn build_request(
         model,
         messages,
         stream,
-        max_tokens,
+        max_tokens: effective_max_tokens,
         temperature: temp,
-        top_p,
         stop_sequences: vec![],
-        timeout,
+        timeout: timeout,
         thinking,
     })
 }
@@ -136,8 +147,6 @@ pub async fn llm_chat(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
-    top_p: f64,
-    timeout: f64,
     thinking_enabled: bool,
     thinking_mode: String,
     thinking_effort: String,
@@ -150,8 +159,6 @@ pub async fn llm_chat(
         messages,
         max_tokens,
         temperature,
-        top_p,
-        timeout,
         false,
         thinking_enabled,
         thinking_mode,
@@ -172,8 +179,6 @@ pub async fn llm_chat_stream(
     messages: Vec<ChatMessage>,
     max_tokens: u32,
     temperature: f64,
-    top_p: f64,
-    timeout: f64,
     thinking_enabled: bool,
     thinking_mode: String,
     thinking_effort: String,
@@ -186,8 +191,6 @@ pub async fn llm_chat_stream(
         messages,
         max_tokens,
         temperature,
-        top_p,
-        timeout,
         true,
         thinking_enabled,
         thinking_mode,

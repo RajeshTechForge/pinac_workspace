@@ -46,8 +46,6 @@ export default function ModelPicker() {
       defaultModel: modelId,
       temperature: state.settings.temperature,
       maxTokens: state.settings.maxTokens,
-      topP: state.settings.topP,
-      timeout: state.settings.timeout,
       thinkingEnabled: newThinkingEnabled,
       thinkingEffort: newThinkingEffort,
     });

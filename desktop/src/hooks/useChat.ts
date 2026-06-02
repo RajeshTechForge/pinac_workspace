@@ -106,8 +106,6 @@ export function useChat() {
           messages: history,
           maxTokens: state.settings.maxTokens,
           temperature: state.settings.temperature,
-          topP: state.settings.topP,
-          timeout: state.settings.timeout,
           thinkingEnabled: state.settings.thinkingEnabled,
           thinkingMode,
           thinkingEffort: state.settings.thinkingEffort,

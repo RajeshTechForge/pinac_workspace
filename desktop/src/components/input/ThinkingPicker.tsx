@@ -44,8 +44,6 @@ export default function ThinkingPicker() {
       defaultModel: state.settings.defaultModel,
       temperature: state.settings.temperature,
       maxTokens: state.settings.maxTokens,
-      topP: state.settings.topP,
-      timeout: state.settings.timeout,
       thinkingEnabled: newEnabled,
       thinkingEffort: newEnabled ? newEffort : "",
     });

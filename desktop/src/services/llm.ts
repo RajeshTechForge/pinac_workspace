@@ -13,8 +13,6 @@ export type LlmStreamPayload = {
   messages: LlmMessage[];
   maxTokens: number;
   temperature: number;
-  topP: number;
-  timeout: number;
   thinkingEnabled: boolean;
   thinkingMode: string;
   thinkingEffort: string;
@@ -60,8 +58,6 @@ export async function streamLlmResponse(
     messages: payload.messages,
     maxTokens: payload.maxTokens,
     temperature: payload.temperature,
-    topP: payload.topP,
-    timeout: payload.timeout,
     thinkingEnabled: payload.thinkingEnabled,
     thinkingMode: payload.thinkingMode,
     thinkingEffort: payload.thinkingEffort,

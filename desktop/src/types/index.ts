@@ -77,8 +77,6 @@ export type AppSettings = {
   apiKeySaved: boolean;
   temperature: number;
   maxTokens: number;
-  topP: number;
-  timeout: number;
   provider: string;
   thinkingEnabled: boolean;
   thinkingEffort: string;
