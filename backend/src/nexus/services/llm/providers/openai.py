@@ -28,13 +28,20 @@ from typing import Any
 import tiktoken
 from openai import (
     APIConnectionError,
+    APIError,
+    APIResponseValidationError,
     APIStatusError,
     APITimeoutError,
     AsyncOpenAI,
     AuthenticationError,
     BadRequestError,
+    ConflictError,
+    InternalServerError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+    UnprocessableEntityError,
 )
-from openai import RateLimitError as OpenAIRateLimitError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from ..base import (
@@ -56,7 +63,6 @@ from ..exceptions import (
     LLMProviderInitError,
     LLMRateLimitError,
     LLMTimeoutError,
-    LLMTokenLimitError,
 )
 
 logger = logging.getLogger(__name__)
@@ -270,15 +276,8 @@ class OpenAIProvider(LLMProvider):
                 self._client.models.list(),
                 timeout=_HEALTH_CHECK_TIMEOUT_S,
             )
-        except AuthenticationError as exc:
-            raise LLMProviderInitError(
-                "OpenAI-compatible API key is invalid or revoked.", provider="openai"
-            ) from exc
         except Exception as exc:
-            # Non-fatal: some NVIDIA NIM / proxy endpoints restrict model listing.
-            logger.warning(
-                "OpenAIProvider credential probe failed (non-fatal): %s", exc
-            )
+            raise self._map_openai_error(exc) from exc
 
         self._initialized = True
         logger.info("OpenAIProvider initialised successfully.")
@@ -386,6 +385,7 @@ class OpenAIProvider(LLMProvider):
                 elapsed_s=elapsed,
                 provider="openai",
             ) from exc
+
         except Exception as exc:
             raise self._map_openai_error(exc) from exc
 
@@ -488,6 +488,7 @@ class OpenAIProvider(LLMProvider):
                 elapsed_s=elapsed,
                 provider="openai",
             ) from exc
+
         except Exception as exc:
             raise self._map_openai_error(exc) from exc
 
@@ -665,57 +666,220 @@ class OpenAIProvider(LLMProvider):
     def _map_openai_error(exc: Exception) -> Exception:
         """Map an OpenAI SDK exception to the most specific LLM domain error."""
 
-        if isinstance(exc, OpenAIRateLimitError):
-            return LLMRateLimitError(
-                f"OpenAI endpoint rate limit exceeded: {exc.message}",
-                retry_after_s=OpenAIProvider._parse_retry_after(exc),
-                provider="openai",
-            )
+        status_code = getattr(exc, "status_code", None)
+        exc_type = type(exc).__name__
 
         if isinstance(exc, AuthenticationError):
+            logger.warning(
+                "OpenAI authentication failed.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
             return LLMAuthenticationError(
-                f"OpenAI authentication failed: {exc.message}", provider="openai"
-            )
-
-        if isinstance(exc, BadRequestError):
-            msg_lower = exc.message.lower() if exc.message else ""
-            if (
-                "too long" in msg_lower
-                or "context" in msg_lower
-                or "token" in msg_lower
-                or "maximum context length" in msg_lower
-            ):
-                return LLMTokenLimitError(
-                    f"Prompt exceeds model context window: {exc.message}",
-                    context_limit=_MAX_CONTEXT_TOKENS,
-                    provider="openai",
-                )
-            return LLMProviderError(
-                f"OpenAI  bad request: {exc.message}",
-                status_code=exc.status_code,
+                "OpenAI API credentials are invalid or revoked.",
+                status_code=status_code,
                 provider="openai",
             )
 
-        if isinstance(exc, APIStatusError):
-            return LLMProviderError(
-                f"OpenAI API error: {exc.message}",
-                status_code=exc.status_code,
+        elif isinstance(exc, APITimeoutError):
+            logger.warning(
+                "OpenAI request timed out.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMTimeoutError(
+                "The request to OpenAI timed out. Please try again.",
                 provider="openai",
             )
 
-        if isinstance(exc, APITimeoutError):
-            return LLMTimeoutError("OpenAI request timed out.", provider="openai")
+        elif isinstance(exc, APIConnectionError):
+            logger.warning(
+                "OpenAI connection error.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "Unable to connect to the OpenAI API. Please try again later.",
+                provider="openai",
+            )
 
-        if isinstance(exc, APIConnectionError):
-            return LLMProviderError("OpenAI connection error.", provider="openai")
+        elif isinstance(exc, PermissionDeniedError):
+            logger.warning(
+                "OpenAI permission denied.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMAuthenticationError(
+                "Access denied by OpenAI. The API key lacks permission for this operation.",
+                status_code=status_code,
+                provider="openai",
+            )
 
-        # Catch-all for any SDK error not explicitly enumerated above.
+        elif isinstance(exc, NotFoundError):
+            logger.warning(
+                "OpenAI resource not found.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "The requested OpenAI model or resource was not found.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, ConflictError):
+            logger.warning(
+                "OpenAI resource conflict.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "OpenAI resource conflict. This may indicate a concurrent modification or invalid state.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, UnprocessableEntityError):
+            logger.warning(
+                "OpenAI unprocessable entity.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "OpenAI could not process the request. Verify the input format and parameters.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, RateLimitError):
+            retry_after = OpenAIProvider._parse_retry_after(exc)
+            logger.warning(
+                "OpenAI rate limit exceeded.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                    "retry_after_s": retry_after,
+                },
+            )
+            return LLMRateLimitError(
+                "OpenAI request rate limit exceeded. Retry after the delay returned by the service.",
+                status_code=status_code,
+                retry_after_s=retry_after,
+                provider="openai",
+            )
+
+        elif isinstance(exc, BadRequestError):
+            logger.warning(
+                "OpenAI bad request.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "OpenAI rejected the request as bad request.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, InternalServerError):
+            logger.warning(
+                "OpenAI internal server error.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "OpenAI encountered an internal server error. Please retry shortly.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, APIResponseValidationError):
+            logger.warning(
+                "OpenAI response validation failed.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "OpenAI response JSON did not match the expected schema.",
+                provider="openai",
+            )
+
+        elif isinstance(exc, APIStatusError):
+            logger.warning(
+                "OpenAI HTTP status error.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "An unexpected OpenAI HTTP error occurred.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        elif isinstance(exc, APIError):
+            logger.warning(
+                "OpenAI SDK error.",
+                extra={
+                    "provider": "openai",
+                    "exc_type": exc_type,
+                    "status_code": status_code,
+                },
+            )
+            return LLMProviderError(
+                "An unexpected Open API error occurred.",
+                status_code=status_code,
+                provider="openai",
+            )
+
+        logger.exception(
+            "Unexpected error from OpenAI provider.",
+            extra={
+                "provider": "openai",
+                "exc_type": exc_type,
+                "status_code": status_code,
+            },
+        )
         return LLMProviderError(
-            f"OpenAI unexpected error ({type(exc).__name__}): {exc}", provider="openai"
+            "An unexpected error occurred while communicating with OpenAI.",
+            status_code=status_code,
+            provider="openai",
         )
 
     @staticmethod
-    def _parse_retry_after(exc: OpenAIRateLimitError) -> float | None:
+    def _parse_retry_after(exc: RateLimitError) -> float | None:
         """Extract the "Retry-After" delay from a rate-limit response header.
 
         Args:
