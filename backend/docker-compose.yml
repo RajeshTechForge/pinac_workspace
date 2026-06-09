@@ -1,0 +1,23 @@
+# ========================================================================
+#  Nexus — Local Development
+# ========================================================================
+#  Usage:
+#    docker compose up              Start with hot-reload on source changes
+#    docker compose up --build      Rebuild after dependency changes
+#    docker compose down            Stop
+# ========================================================================
+
+services:
+  nexus-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    volumes:
+      - ./src:/app/src
+    command: uvicorn nexus.api.app:app --host 0.0.0.0 --port 8000 --reload
