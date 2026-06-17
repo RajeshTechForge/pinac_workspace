@@ -1,7 +1,6 @@
 import { ArrowUp, Square } from "lucide-react";
 import ModelPicker from "./ModelPicker";
 import ThinkingPicker from "./ThinkingPicker";
-import Badge from "../ui/Badge";
 
 type InputToolbarProps = {
   text: string;
@@ -28,9 +27,6 @@ export default function InputToolbar({
       <div className="flex items-center gap-2">
         <ModelPicker />
         <ThinkingPicker />
-        {text.trim() && (
-          <Badge>~{estimateTokens(text)} tok</Badge>
-        )}
       </div>
 
       {isStreaming ? (

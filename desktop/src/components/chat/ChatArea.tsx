@@ -11,7 +11,6 @@ export default function ChatArea() {
   function handleSuggestion(text: string) {
     let convId = state.activeConversationId;
 
-    // If no active conversation exists, create an in-session placeholder.
     if (!convId) {
       convId = `conv-${Date.now()}`;
       const newMeta: ConversationMeta = {

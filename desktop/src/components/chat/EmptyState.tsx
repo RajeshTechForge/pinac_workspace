@@ -1,10 +1,10 @@
 const SUGGESTIONS = [
-  "Explain the CAP theorem in simple terms",
-  "Write a React hook for localStorage persistence",
-  "Compare Postgres and SQLite for a desktop app",
-  "Design a rate limiter for a REST API",
-  "Refactor this Python function to be async",
-  "How does TCP congestion control work?",
+  "Write a follow-up email to a client who ghosted my proposal",
+  "Draft a project status update for my manager",
+  "Prepare talking points for my performance review tomorrow",
+  "Outline a 10-minute pitch presentation for HR",
+  "Help me address a colleague who keeps missing deadlines",
+  "Summarize this contract in plain English",
 ];
 
 interface EmptyStateProps {

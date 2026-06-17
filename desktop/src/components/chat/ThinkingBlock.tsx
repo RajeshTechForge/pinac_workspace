@@ -35,7 +35,7 @@ export default function ThinkingBlock({
       </button>
 
       {open && (
-        <div className="px-3 pb-2 text-[13px] leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
+        <div className="px-3 pb-2 text-[13px] leading-relaxed text-text-muted italic whitespace-pre-wrap warp-break-words">
           {content}
         </div>
       )}

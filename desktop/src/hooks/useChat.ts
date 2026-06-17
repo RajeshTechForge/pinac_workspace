@@ -10,15 +10,9 @@ export function useChat() {
   const unlistenRef = useRef<(() => void) | null>(null);
 
   // Stores everything needed to persist a pair after streaming completes.
-  // Using a ref instead of closure variables means `persistPair` never reads
-  // stale React state — all values are captured explicitly at send time.
   const pendingPairRef = useRef<{
     userMsg: Message;
     assistantMsgId: string;
-    /** Snapshot of conversation metadata taken at send time, not at persist time.
-     *  For new in-session conversations that haven't been written to the DB yet,
-     *  the conv may not appear in `state.conversations` (React batches the dispatch
-     *  and hasn't re-rendered before sendMessage runs), so we reconstruct it here. */
     convMeta: ConversationMeta;
     isFirstPair: boolean;
   } | null>(null);
@@ -91,9 +85,6 @@ export function useChat() {
       pendingPairRef.current = { userMsg, assistantMsgId, convMeta, isFirstPair };
 
       // ── 3. Start streaming ────────────────────────────────────────────────
-      // `totalContent` / `totalThinkingContent` accumulate every delta for the
-      // entire stream. `streamBuffer` holds only the undispatched RAF-batched
-      // portion. All are local to this sendMessage invocation — never stale.
       let streamBuffer = "";
       let totalContent = "";
       let thinkingBuffer = "";
@@ -183,8 +174,6 @@ export function useChat() {
       });
 
       // ── Persist helper ────────────────────────────────────────────────────
-      // Reads only from `pendingPairRef` and the argument closures below.
-      // Never reads `state.*` — all required context was captured at send time.
       function persistPair(
         finalContent: string,
         finalThinkingContent: string,
