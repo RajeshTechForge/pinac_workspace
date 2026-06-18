@@ -65,6 +65,7 @@ export default function CommandPalette() {
         icon: "settings",
         category: "settings",
         action: () => {
+          dispatch({ type: "TOGGLE_SETTINGS" });
           dispatch({ type: "TOGGLE_COMMAND_PALETTE" });
         },
       },

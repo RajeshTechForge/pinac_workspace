@@ -33,6 +33,12 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      if (isMeta && e.key === ",") {
+        e.preventDefault();
+        dispatch({ type: "TOGGLE_SETTINGS" });
+        return;
+      }
+
       if (isMeta && e.key === "f") {
         if (state.sidebarMode !== "hidden") {
           e.preventDefault();
