@@ -32,25 +32,31 @@ export default function EmptyState({ onSelectSuggestion }: EmptyStateProps) {
             </button>
           ))}
         </div>
-        <div className="text-[11px] font-mono text-text-muted space-y-1">
-          <p>
-            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-[11px] font-mono text-text-muted mx-auto w-fit text-left">
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary min-w-7 text-center inline-block">
               ⌘K
-            </kbd>{" "}
-            Command palette
-          </p>
-          <p>
-            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary">
+            </kbd>
+            <span>Command palette</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary min-w-7 text-center inline-block">
               ⌘N
-            </kbd>{" "}
-            New conversation
-          </p>
-          <p>
-            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary">
+            </kbd>
+            <span>New conversation</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary min-w-7 text-center inline-block">
               ⌘↵
-            </kbd>{" "}
-            Send message
-          </p>
+            </kbd>
+            <span>Send message</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-2 border border-border rounded-xs text-text-secondary min-w-7 text-center inline-block">
+              ⌘,
+            </kbd>
+            <span>Open settings</span>
+          </div>
         </div>
       </div>
     </div>
