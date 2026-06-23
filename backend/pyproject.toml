@@ -5,14 +5,11 @@ description = "Backend service for Pinac Workspace"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "anthropic>=0.103.1",
     "fastapi>=0.136.1",
-    "google-genai>=2.5.0",
     "itsdangerous>=2.2.0",
-    "openai>=2.37.0",
+    "kitkat[all-providers]>=0.1.0",
     "pydantic>=2.13.4",
-    "pydantic-settings>=2.14.2",
-    "tiktoken>=0.13.0",
+    "pydantic-settings>=2.14.1",
     "uvicorn>=0.47.0",
 ]
 
