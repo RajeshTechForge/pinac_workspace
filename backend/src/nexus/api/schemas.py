@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from nexus.services.llm.base import LLMRequest, ProviderType
+from kitkat.core import LLMRequest, ProviderType
 from nexus.services.llm.schemas import (
     LLMResponseSchema,
     MessageSchema,

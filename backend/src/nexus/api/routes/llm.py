@@ -4,10 +4,11 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from kitkat.core.exceptions import LLMError
+from kitkat.service.byok import BYOKLLMService
 
 from nexus.api.schemas import ChatRequest, ChatResponse
 from nexus.exceptions import NexusError
-from nexus.services.llm import BYOKLLMService
 from nexus.services.llm.schemas import (
     StreamChunkEvent,
     StreamChunkSchema,
@@ -16,6 +17,26 @@ from nexus.services.llm.schemas import (
 )
 
 router = APIRouter()
+
+
+def _llm_error_to_sse(exc: LLMError) -> StreamErrorEvent:
+    """Convert a kitkat LLMError into a structured SSE error frame.
+
+    Args:
+        exc: The kitkat exception raised during inference.
+
+    Returns:
+        A :class:`StreamErrorEvent` with a machine-readable code, the
+        exception message, and an optional provider context in details.
+    """
+    details = {"provider": exc.provider} if getattr(exc, "provider", None) else None
+    return StreamErrorEvent(
+        error=StreamErrorPayload(
+            code=type(exc).__name__.upper(),
+            message=str(exc),
+            details=details,
+        )
+    )
 
 
 async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
@@ -31,6 +52,9 @@ async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
                 event = StreamChunkEvent(data=StreamChunkSchema.from_domain(chunk))
                 yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
 
+    except LLMError as exc:
+        event = _llm_error_to_sse(exc)
+        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
     except NexusError as exc:
         event = StreamErrorEvent(
             error=StreamErrorPayload(
