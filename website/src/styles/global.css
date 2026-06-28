@@ -1,0 +1,181 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+    /* Void Surfaces */
+    --color-void-900: #05060a;
+    --color-void-800: #0a0b14;
+    --color-void-700: #11121f;
+    --color-void-600: #181a2a;
+    --color-void-500: #232536;
+    --color-void-400: #2f3147;
+
+    /* Starlight Text */
+    --color-star-100: #f0f4ff;
+    --color-star-200: #c8cce6;
+    --color-star-300: #969bb8;
+    --color-star-400: #595d75;
+    --color-star-500: #3b3f54;
+
+    /* Cosmic Accents */
+    --color-nebula: #82aaff;
+    --color-aurora: #9d86d6;
+    --color-comet: #5cc0c4;
+    --color-supernova: #e0a864;
+    --color-pulsar: #7ce0b0;
+    --color-redshift: #c75d6f;
+
+    /* Typography */
+    --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    --font-sans: "Geist", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   COSMIC BACKGROUND SYSTEM
+   Four stacked atmospheric layers — all kept at very low
+   opacity so they read as texture, not decoration.
+   ============================================================ */
+
+/* Layer 0: Fixed base container */
+.cosmic-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #0a0b14; /* void-800 */
+  overflow: hidden;
+}
+
+/* Layer 1: Nebula glow orbs */
+.nebula-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.nebula-orb.primary {
+  width: 65vw;
+  height: 65vw;
+  background: radial-gradient(circle, #82aaff 0%, transparent 70%);
+  top: -15%;
+  left: -15%;
+  opacity: 0.11;
+  animation:
+    nebula-drift-primary 30s ease-in-out infinite alternate,
+    nebula-pulse-primary 12s ease-in-out infinite alternate;
+}
+
+.nebula-orb.secondary {
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, #9d86d6 0%, transparent 70%);
+  bottom: -20%;
+  right: -12%;
+  opacity: 0.07;
+  animation:
+    nebula-drift-secondary 38s ease-in-out infinite alternate,
+    nebula-pulse-secondary 15s ease-in-out infinite alternate;
+}
+
+.nebula-orb.tertiary {
+  width: 40vw;
+  height: 40vw;
+  background: radial-gradient(circle, #5cc0c4 0%, transparent 70%);
+  top: 40%;
+  left: 40%;
+  opacity: 0.05;
+  animation: nebula-drift-tertiary 45s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-drift-primary {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(6%, 8%); }
+}
+@keyframes nebula-pulse-primary {
+  from { opacity: 0.08; }
+  to   { opacity: 0.13; }
+}
+
+@keyframes nebula-drift-secondary {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-5%, -7%); }
+}
+@keyframes nebula-pulse-secondary {
+  from { opacity: 0.05; }
+  to   { opacity: 0.10; }
+}
+
+@keyframes nebula-drift-tertiary {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-4%, 5%) scale(1.1); }
+}
+
+/* Layer 2: Star field (CSS-only, GPU-friendly single composited layer) */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    radial-gradient(1px 1px at 22px   35px,  rgba(240,244,255,0.45), transparent),
+    radial-gradient(1px 1px at 60px   90px,  rgba(240,244,255,0.25), transparent),
+    radial-gradient(2px 2px at 130px  42px,  rgba(200,204,230,0.30), transparent),
+    radial-gradient(1px 1px at 185px  115px, rgba(240,244,255,0.20), transparent),
+    radial-gradient(1px 1px at 255px  72px,  rgba(240,244,255,0.35), transparent),
+    radial-gradient(1px 1px at 308px  22px,  rgba(200,204,230,0.15), transparent),
+    radial-gradient(1px 1px at 84px   190px, rgba(240,244,255,0.22), transparent),
+    radial-gradient(2px 2px at 340px  140px, rgba(200,204,230,0.18), transparent),
+    radial-gradient(1px 1px at 400px  60px,  rgba(240,244,255,0.28), transparent),
+    radial-gradient(1px 1px at 10px   155px, rgba(240,244,255,0.18), transparent),
+    radial-gradient(1px 1px at 220px  190px, rgba(200,204,230,0.22), transparent),
+    radial-gradient(1px 1px at 460px  30px,  rgba(240,244,255,0.15), transparent),
+    radial-gradient(2px 2px at 480px  170px, rgba(200,204,230,0.20), transparent),
+    radial-gradient(1px 1px at 375px  200px, rgba(240,244,255,0.25), transparent),
+    radial-gradient(1px 1px at 100px  10px,  rgba(240,244,255,0.30), transparent),
+    radial-gradient(1px 1px at 510px  90px,  rgba(240,244,255,0.20), transparent),
+    radial-gradient(1px 1px at 165px  230px, rgba(200,204,230,0.18), transparent),
+    radial-gradient(2px 2px at 430px  250px, rgba(240,244,255,0.22), transparent);
+  /* Non-square sizing prevents obvious tiling seams */
+  background-size: 540px 270px;
+  background-repeat: repeat;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* Layer 3: Faint perspective / structure grid */
+.space-grid {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(130, 170, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(130, 170, 255, 0.035) 1px, transparent 1px);
+  background-size: 80px 80px;
+  background-position: center top;
+  /* Fade out at top/bottom edges so it dissolves into the void */
+  mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Layer 4: Analog noise / film grain — kills gradient banding */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  /* Sits above content backgrounds but below interactive elements */
+  z-index: 1;
+  opacity: 0.035;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Mobile: hide grid and reduce star density for clean reading */
+@media (max-width: 768px) {
+  .space-grid            { display: none; }
+  .starfield             { opacity: 0.40; }
+  .nebula-orb.tertiary   { display: none; }
+}
