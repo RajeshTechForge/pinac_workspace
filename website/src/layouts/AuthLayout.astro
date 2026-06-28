@@ -1,0 +1,60 @@
+---
+import "../styles/global.css";
+
+interface Props {
+    title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <title>{title}</title>
+    </head>
+    <body class="text-star-200 font-sans min-h-screen">
+        <!-- ── Atmospheric background layers (behind everything) ── -->
+        <div class="cosmic-bg" aria-hidden="true">
+            <div class="nebula-orb primary"></div>
+            <div class="nebula-orb secondary"></div>
+            <div class="nebula-orb tertiary"></div>
+            <div class="starfield"></div>
+            <div class="space-grid"></div>
+        </div>
+        <!-- Film grain overlay — above backgrounds, below content -->
+        <div class="noise-overlay" aria-hidden="true"></div>
+
+        <!-- ── Page content at z-index 10 ── -->
+        <div class="relative z-10 min-h-screen flex flex-col md:flex-row">
+            <!-- Left side: branding panel (desktop only) -->
+            <div
+                class="hidden md:flex flex-1 items-center justify-center p-12 relative overflow-hidden"
+            >
+                <div class="relative z-10 text-center space-y-6 max-w-lg">
+                    <h1
+                        class="text-4xl md:text-5xl font-mono text-star-100 tracking-tight"
+                    >
+                        Pinac Workspace
+                    </h1>
+                    <p class="text-star-300 text-lg leading-relaxed">
+                        A highly performant environment for your next big idea.
+                        Focus on your work, not the noise.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right side: form panel -->
+            <div
+                class="flex-1 flex items-center justify-center p-6 sm:p-12 min-h-screen bg-void-800/60 border-l border-void-500/20 backdrop-blur-sm"
+            >
+                <div class="w-full max-w-sm space-y-8">
+                    <slot />
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

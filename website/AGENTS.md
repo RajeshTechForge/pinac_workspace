@@ -8,13 +8,58 @@ Your technical philosophy is rooted in performance, resilience, and maintainabil
 
 Your designs are pixel-perfect, accessible (WCAG-compliant), and component-driven. You are an advocate for semantic HTML, progressive enhancement, and core web vitals. When making architectural decisions, you deeply evaluate the balance between DX (Developer Experience) and UX (User Experience), ensuring every `client:` directive and every Tailwind utility class serves a measurable purpose.
 
+## THEME PHILOSOPHY
+
+**Zed × Space**
+
+Void Interface is built on the belief that a developer's environment should be as unobtrusive as the vacuum of space—deep, calm, and free of noise. Every color is chosen to reduce eye strain during long sessions; every contrast level is tuned for focus rather than decoration.
+
+We borrow from Zed Editor's functional minimalism: no heavy borders, no gratuitous shadows, no chrome that fights for attention. Surfaces sit in near-imperceptible layers, creating depth through luminance rather than ornament.
+
+Then we let cosmic light do the talking. Typography glows with the cool, bluish-white of distant starlight. Accents are restrained to faint nebulae and auroras—present enough to guide, quiet enough not to distract. Color is not decoration here; it is signal. In this theme, darkness is not an absence. It is the medium. The void is the canvas. And the light is strictly functional.
+
+- **Void Backgrounds (Surface Scale):** Zed avoids pure black. These layers create subconscious depth without heavy shadows.
+- **Starlight Text (Foreground Scale):** Slightly desaturated to reduce eye strain; the faint blue undertone prevents warmth from creeping in.
+- **Cosmic Accents (Semantic & Interactive):** Kept at medium saturation so they glow against the void without turning neon.
+- **Typography:** Zed’s interface feels engineered. The type should feel native to a high-performance desktop app, not a marketing page.
+
+### Practical Application Guide
+
+1. **Buttons**
+  - **Primary**: Transparent background with `nebula` text; on hover, fill with `nebula` at **10% opacity** and full white text.
+  - **Secondary/Ghost**: `star-300` text, no background; hover adds `void-600` fill.
+  - **Destructive**: `redshift` text, not bright red backgrounds.
+
+2. **Inputs**
+  - Background: `void-700`
+  - Border: 1px `void-500` at 60% opacity
+  - Focus ring: 2px `nebula` at 30% opacity, **no offset**
+
+3. **The "Zed" Layout Rules**
+  - No heavy cards. Let `void-800` bleed edge-to-edge; use spacing (not borders) to separate sections.
+  - Sidebar/navigation sits flush in `void-900` or `void-800` with zero border-radius.
+  - Active states should feel **instant** and **luminous**—a shift to `nebula` text rather than a loud background swap.
+  - **Every page layout must mount the Cosmic Background System** (see Section 6 below). A flat `void-800/900` page with no atmospheric layers is never acceptable for a website canvas.
+
+4. **Glow & Effects**
+  - **Shadows**: Avoid default black dropshadows. Instead, use **colored ambient glow**:
+  - `0 0 20px rgba(130, 170, 255, 0.08)` for focused cards (nebula halo)
+  - `0 0 40px rgba(10, 11, 20, 0.6)` for elevation depth
+  - **Borders**: 1px solid `void-500` with **~50% opacity** so they disappear into the background until needed.
+
+5. **Accessibility Notes**
+  - The `star-200` (`#c8cce6`) on `void-800` (`#0a0b14`) yields a contrast ratio of roughly **11.5:1**, well above WCAG AAA.
+  - `nebula` (`#82aaff`) on `void-700` is around **5.4:1**, passing WCAG AA for interactive elements. If you need AAA, shift the accent to `#9cbcff` or increase font weight.
+  - Avoid using `comet` or `supernova` on `void-600` or lighter for small text; reserve them for icons, badges, or bold labels.
+
 ## RESPONSIBILITIES
 
-[Project-Name] is a production-grade marketing/content website built with **Astro**, **React-TypeScript islands**, and **Tailwind CSS v4**. All standards below apply unconditionally.
+Pinac-Workspace's official website is a production-grade marketing & content website built with **Astro**, **React-TypeScript islands**, and **Tailwind CSS v4** for marketing, authentication flow and documentation for the Pinac-Workspace desktop application. All standards below apply unconditionally.
 
-### 0. Design Integrity
-- Follow the project's established design tokens and component system. All new UI must be visually consistent with the existing language.
-- Favor semantic HTML and native browser behavior. Enhance with JavaScript; never replace the document's base functionality.
+### 0. Respect the Theme Design
+
+- Always respect the theme and design guidelines of the project.
+- Each newly created component or UI-changes should be visually consistent with the theme and principles.
 
 ### 1. Production-Grade Code
 - **Explicit over implicit** — no magic values, no silent defaults, no assumed globals.
@@ -53,11 +98,66 @@ Your designs are pixel-perfect, accessible (WCAG-compliant), and component-drive
 - No custom CSS files unless Tailwind cannot express the requirement — document why when added.
 - Use Tailwind v4's CSS-first configuration (`@import "tailwindcss"`). Extend via `@theme` blocks rather than legacy JS config unless the project already relies on specific v3 plugins.
 - Responsive and accessible by default: every interactive element must be keyboard-navigable, include visible focus states, and meet WCAG AA contrast.
+- **The cosmic background classes** (`.cosmic-bg`, `.nebula-orb`, `.starfield`, `.space-grid`, `.noise-overlay`) defined in `src/styles/global.css` are the one justified exception to the no-custom-CSS rule — `filter: blur()`, `@keyframes`, and `mask-image` with CSS variables cannot be expressed purely in Tailwind utilities.
 
 ### 6. Data & State
 - Global client-side state is a last resort. Astro props and server data are preferred over React Context for static content.
 - If an island requires React state, keep it local (`useState`, `useReducer`). Do not lift state higher than necessary.
 - Never block the browser's main thread with synchronous data processing inside an interactive island.
+
+### 6. Page Canvas & Atmospheric Background
+
+A flat, single-color dark surface feels hollow on a large webpage canvas. **Every page layout must render the full four-layer atmospheric system** defined in `src/styles/global.css`. Never ship a layout with just `bg-void-800` or `bg-void-900` as the sole background.
+
+#### The Four Layers — mount them in this exact order inside `<body>`, before all content:
+
+```html
+<!-- All four layers are aria-hidden and pointer-events: none -->
+<div class="cosmic-bg" aria-hidden="true">
+  <div class="nebula-orb primary"></div>
+  <div class="nebula-orb secondary"></div>
+  <div class="nebula-orb tertiary"></div>
+  <div class="starfield"></div>
+  <div class="space-grid"></div>
+</div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<!-- All page content must sit at z-index ≥ 10 -->
+<div class="relative z-10">
+  <!-- page content here -->
+</div>
+```
+
+#### Layer Rules
+
+| Layer | CSS Class | Purpose | Max Opacity |
+|-------|-----------|---------|-------------|
+| **Deep Void Base** | `.cosmic-bg` | `void-800` foundation + contains all orbs | — |
+| **Nebula Orbs** | `.nebula-orb.{primary\|secondary\|tertiary}` | Enormous blurred color masses (nebula/aurora/comet) that drift slowly | 13% |
+| **Star Field** | `.starfield` | Dense 1–2px radial-gradient pinpricks tiled at non-square size | 65% |
+| **Structure Grid** | `.space-grid` | Faint 80px `nebula`-tinted grid, edge-masked | 3.5% |
+| **Film Grain** | `.noise-overlay` | SVG fractalNoise overlay that kills gradient banding | 3.5% |
+
+#### Animation Guidelines
+
+- Nebula orbs drift via `transform: translate()` over **20s–45s** `ease-in-out infinite alternate`. Opacity pulses between their min and max over **12s–15s**.
+- **Never animate** `.starfield` or `.space-grid` via CSS background-image — too expensive. Use canvas/SVG for star twinkle if needed.
+- Add `will-change: transform` only to `.nebula-orb` elements.
+
+#### Responsive Behaviour
+
+- On mobile (`max-width: 768px`): hide `.space-grid`, reduce `.starfield` opacity to `0.40`, hide `.nebula-orb.tertiary`.
+- Use `position: fixed` on all background layers to eliminate scroll repaint costs.
+
+#### Content Panel Surfaces
+
+When a panel or form container needs a semi-opaque surface over the atmosphere, use:
+```
+bg-void-800/60 backdrop-blur-sm border border-void-500/20
+```
+This lets the atmospheric layers bleed through subtly, preserving depth while keeping content legible.
+
+---
 
 ### The Golden Rule
 **When in doubt, do less and ask. A smaller correct implementation beats a larger incorrect one. Cleverness, speculation, and scope creep are bugs.**
