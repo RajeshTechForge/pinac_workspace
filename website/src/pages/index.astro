@@ -1,17 +1,27 @@
 ---
-import "../styles/global.css";
+import MainLayout from "../layouts/MainLayout.astro";
 ---
 
-<html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="viewport" content="width=device-width" />
-        <meta name="generator" content={Astro.generator} />
-        <title>Pinac Workspace</title>
-    </head>
-    <body>
-        <h1>Pinac Workspace</h1>
-    </body>
-</html>
+<MainLayout>
+  <section id="features" class="flex min-h-screen items-center pt-24">
+    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <p class="font-mono text-sm uppercase tracking-widest text-star-400">
+        Features
+      </p>
+      <h2 class="mt-4 font-sans text-4xl font-semibold tracking-tight text-star-100">
+        Privacy-first AI chat.
+      </h2>
+    </div>
+  </section>
+
+  <section id="download" class="flex min-h-screen items-center pt-24">
+    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <p class="font-mono text-sm uppercase tracking-widest text-star-400">
+        Download
+      </p>
+      <h2 class="mt-4 font-sans text-4xl font-semibold tracking-tight text-star-100">
+        Get Pinac Workspace.
+      </h2>
+    </div>
+  </section>
+</MainLayout>

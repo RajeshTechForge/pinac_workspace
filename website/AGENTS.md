@@ -18,40 +18,6 @@ We borrow from Zed Editor's functional minimalism: no heavy borders, no gratuito
 
 Then we let cosmic light do the talking. Typography glows with the cool, bluish-white of distant starlight. Accents are restrained to faint nebulae and auroras—present enough to guide, quiet enough not to distract. Color is not decoration here; it is signal. In this theme, darkness is not an absence. It is the medium. The void is the canvas. And the light is strictly functional.
 
-- **Void Backgrounds (Surface Scale):** Zed avoids pure black. These layers create subconscious depth without heavy shadows.
-- **Starlight Text (Foreground Scale):** Slightly desaturated to reduce eye strain; the faint blue undertone prevents warmth from creeping in.
-- **Cosmic Accents (Semantic & Interactive):** Kept at medium saturation so they glow against the void without turning neon.
-- **Typography:** Zed’s interface feels engineered. The type should feel native to a high-performance desktop app, not a marketing page.
-
-### Practical Application Guide
-
-1. **Buttons**
-  - **Primary**: Transparent background with `nebula` text; on hover, fill with `nebula` at **10% opacity** and full white text.
-  - **Secondary/Ghost**: `star-300` text, no background; hover adds `void-600` fill.
-  - **Destructive**: `redshift` text, not bright red backgrounds.
-
-2. **Inputs**
-  - Background: `void-700`
-  - Border: 1px `void-500` at 60% opacity
-  - Focus ring: 2px `nebula` at 30% opacity, **no offset**
-
-3. **The "Zed" Layout Rules**
-  - No heavy cards. Let `void-800` bleed edge-to-edge; use spacing (not borders) to separate sections.
-  - Sidebar/navigation sits flush in `void-900` or `void-800` with zero border-radius.
-  - Active states should feel **instant** and **luminous**—a shift to `nebula` text rather than a loud background swap.
-  - **Every page layout must mount the Cosmic Background System** (see Section 6 below). A flat `void-800/900` page with no atmospheric layers is never acceptable for a website canvas.
-
-4. **Glow & Effects**
-  - **Shadows**: Avoid default black dropshadows. Instead, use **colored ambient glow**:
-  - `0 0 20px rgba(130, 170, 255, 0.08)` for focused cards (nebula halo)
-  - `0 0 40px rgba(10, 11, 20, 0.6)` for elevation depth
-  - **Borders**: 1px solid `void-500` with **~50% opacity** so they disappear into the background until needed.
-
-5. **Accessibility Notes**
-  - The `star-200` (`#c8cce6`) on `void-800` (`#0a0b14`) yields a contrast ratio of roughly **11.5:1**, well above WCAG AAA.
-  - `nebula` (`#82aaff`) on `void-700` is around **5.4:1**, passing WCAG AA for interactive elements. If you need AAA, shift the accent to `#9cbcff` or increase font weight.
-  - Avoid using `comet` or `supernova` on `void-600` or lighter for small text; reserve them for icons, badges, or bold labels.
-
 ## RESPONSIBILITIES
 
 Pinac-Workspace's official website is a production-grade marketing & content website built with **Astro**, **React-TypeScript islands**, and **Tailwind CSS v4** for marketing, authentication flow and documentation for the Pinac-Workspace desktop application. All standards below apply unconditionally.
@@ -60,6 +26,7 @@ Pinac-Workspace's official website is a production-grade marketing & content web
 
 - Always respect the theme and design guidelines of the project.
 - Each newly created component or UI-changes should be visually consistent with the theme and principles.
+- Use `framer-motion`(`currently known as `motion`) library for animation.
 
 ### 1. Production-Grade Code
 - **Explicit over implicit** — no magic values, no silent defaults, no assumed globals.
@@ -105,7 +72,7 @@ Pinac-Workspace's official website is a production-grade marketing & content web
 - If an island requires React state, keep it local (`useState`, `useReducer`). Do not lift state higher than necessary.
 - Never block the browser's main thread with synchronous data processing inside an interactive island.
 
-### 6. Page Canvas & Atmospheric Background
+### 7. Page Canvas & Atmospheric Background
 
 A flat, single-color dark surface feels hollow on a large webpage canvas. **Every page layout must render the full four-layer atmospheric system** defined in `src/styles/global.css`. Never ship a layout with just `bg-void-800` or `bg-void-900` as the sole background.
 

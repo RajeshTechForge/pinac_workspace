@@ -1,0 +1,46 @@
+---
+import "../styles/global.css";
+import Navbar from "../components/layout/Navbar.tsx";
+
+type Props = {
+  title?: string;
+  description?: string;
+};
+
+const {
+  title = "Pinac Workspace",
+  description = "Privacy-oriented desktop AI chat client.",
+} = Astro.props;
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-void-800 font-sans text-star-200 antialiased">
+    <!-- Four-layer atmospheric background system -->
+    <div class="cosmic-bg" aria-hidden="true">
+      <div class="nebula-orb primary"></div>
+      <div class="nebula-orb secondary"></div>
+      <div class="nebula-orb tertiary"></div>
+      <div class="starfield"></div>
+      <div class="space-grid"></div>
+    </div>
+    <div class="noise-overlay" aria-hidden="true"></div>
+
+    <!-- All page content sits above the background layers -->
+    <div class="relative z-10 flex min-h-screen flex-col">
+      <Navbar currentPath={currentPath} githubStars={35} client:load />
+      <main class="flex-1">
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>
