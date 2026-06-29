@@ -35,9 +35,11 @@ const currentPath = Astro.url.pathname;
     </div>
     <div class="noise-overlay" aria-hidden="true"></div>
 
+    <!-- Fixed navbar sits outside z-10 stacking context so fixed positioning stacks correctly -->
+    <Navbar currentPath={currentPath} githubStars={35} client:load />
+
     <!-- All page content sits above the background layers -->
     <div class="relative z-10 flex min-h-screen flex-col">
-      <Navbar currentPath={currentPath} githubStars={35} client:load />
       <main class="flex-1">
         <slot />
       </main>

@@ -32,6 +32,14 @@
   /* Typography */
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
   --font-sans: "Geist", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+
+  /* Custom breakpoints */
+  --breakpoint-tablet: 900px;
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-void-400) transparent;
 }
 
 /* ============================================================
@@ -287,5 +295,35 @@
   }
   .nebula-orb.tertiary {
     display: none;
+  }
+}
+
+/* ============================================================
+   HERO SECTION & SIGNATURE EFFECTS
+   ============================================================ */
+
+/* Starlight Sheen on H1 */
+.starlight-sheen {
+  background: linear-gradient(
+    110deg,
+    var(--color-star-100) 0%,
+    var(--color-star-300) 40%,
+    var(--color-star-100) 50%,
+    var(--color-star-300) 60%,
+    var(--color-star-100) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sheen 12s ease-in-out infinite alternate;
+}
+
+@keyframes sheen {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
