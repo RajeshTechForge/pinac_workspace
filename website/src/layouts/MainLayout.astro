@@ -25,15 +25,16 @@ const currentPath = Astro.url.pathname;
     <title>{title}</title>
   </head>
   <body class="min-h-screen bg-void-800 font-sans text-star-200 antialiased">
-    <!-- Four-layer atmospheric background system -->
-    <div class="cosmic-bg" aria-hidden="true">
-      <div class="nebula-orb primary"></div>
-      <div class="nebula-orb secondary"></div>
-      <div class="nebula-orb tertiary"></div>
+    <div class="bg-system" aria-hidden="true">
+      <div class="cosmic-bg">
+        <div class="nebula-orb primary"></div>
+        <div class="nebula-orb secondary"></div>
+        <div class="nebula-orb tertiary"></div>
+      </div>
       <div class="starfield"></div>
       <div class="space-grid"></div>
+      <div class="noise-overlay"></div>
     </div>
-    <div class="noise-overlay" aria-hidden="true"></div>
 
     <!-- Fixed navbar sits outside z-10 stacking context so fixed positioning stacks correctly -->
     <Navbar currentPath={currentPath} githubStars={35} client:load />

@@ -1,5 +1,6 @@
 # Editor directories and files
 .vscode/
+.cursor/
 .zed/
 .idea/
 *.swp

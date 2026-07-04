@@ -1,32 +1,12 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
 import Hero from "../components/home/Hero.tsx";
+import TrustedBy from "../components/home/TrustedBy.tsx";
 ---
 
 <MainLayout>
   <section id="hero" class="relative w-full z-0">
     <Hero client:load />
-  </section>
-
-  <section id="features" class="relative z-10 bg-void-700 flex min-h-screen items-start pt-32 shadow-[0_-1px_0_0_rgba(255,255,255,0.02)]">
-    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-      <p class="font-mono text-sm uppercase tracking-widest text-star-400">
-        Features
-      </p>
-      <h2 class="mt-4 font-sans text-4xl font-semibold tracking-tight text-star-100">
-        Privacy-first AI chat.
-      </h2>
-    </div>
-  </section>
-
-  <section id="download" class="relative z-10 bg-void-700 flex min-h-screen items-center pt-24">
-    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-      <p class="font-mono text-sm uppercase tracking-widest text-star-400">
-        Download
-      </p>
-      <h2 class="mt-4 font-sans text-4xl font-semibold tracking-tight text-star-100">
-        Get Pinac Workspace.
-      </h2>
-    </div>
+    <TrustedBy client:only="react" />
   </section>
 </MainLayout>
