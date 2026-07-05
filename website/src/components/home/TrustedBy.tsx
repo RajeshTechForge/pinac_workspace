@@ -58,10 +58,10 @@ export default function TrustedBy() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.2, duration: 0.9, ease: "easeOut" }}
-      className="w-full flex flex-col items-center pt-16 minor-xs:pt-20 pb-20 minor-xs:pb-28 relative z-10"
+      className="w-full flex flex-col items-center pt-20 minor-xs:pt-24 pb-20 minor-xs:pb-20 relative z-10"
     >
       {/* Label */}
-      <p className="font-mono text-[10px] minor-xs:text-xs minor-sm:text-sm font-semibold tracking-widest uppercase text-star-400 mb-10 text-center">
+      <p className="font-mono text-[10px] minor-xs:text-xs minor-sm:text-sm tracking-widest uppercase text-star-400/80 mb-10 text-center">
         Integrates with
       </p>
 
@@ -80,7 +80,7 @@ export default function TrustedBy() {
           className="flex w-max"
           animate={{ x: ["0%", "-50%"] }}
           transition={{
-            duration: 28,
+            duration: 40,
             ease: "linear",
             repeat: Infinity,
             repeatType: "loop",

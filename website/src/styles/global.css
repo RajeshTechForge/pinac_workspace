@@ -425,3 +425,86 @@
     background-position: 0% 50%;
   }
 }
+
+/* ============================================================
+   FEATURE CARD POCKET BACKGROUND
+   A single unified micro-atmospheric surface for all feature cards.
+   Composed of four layers stacked bottom-to-top:
+     1. Deep-space base gradient (300° sweep, void-900 → void-800)
+     2. Comet cyan colour bloom anchored top-right
+     3. Five concentric halo rings (top-right origin, glowing bands)
+     4. Bottom-zone darkening — pulls the visual area into deeper void
+   ============================================================ */
+
+/* Shared positional base — fills the card, clips to its border-radius */
+.card-pocket {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+  /* ── Layer 4: bottom-zone darkening ─── */
+  background:
+    /* Bottom-zone darkening — visual slot recedes into void */
+    linear-gradient(to bottom, transparent 55%, rgba(5, 6, 10, 0.6) 100%),
+    /* Halo ring 5 — outermost, widest, most ethereal */
+    radial-gradient(
+        circle at 105% -5%,
+        transparent 195px,
+        rgba(92, 192, 196, 0.025) 200px,
+        rgba(92, 192, 196, 0.06) 204px,
+        rgba(92, 192, 196, 0.025) 208px,
+        transparent 215px
+      ),
+    /* Halo ring 4 */
+    radial-gradient(
+        circle at 105% -5%,
+        transparent 150px,
+        rgba(92, 192, 196, 0.03) 155px,
+        rgba(92, 192, 196, 0.075) 159px,
+        rgba(92, 192, 196, 0.03) 163px,
+        transparent 170px
+      ),
+    /* Halo ring 3 */
+    radial-gradient(
+        circle at 105% -5%,
+        transparent 108px,
+        rgba(92, 192, 196, 0.04) 113px,
+        rgba(92, 192, 196, 0.09) 117px,
+        rgba(92, 192, 196, 0.04) 121px,
+        transparent 128px
+      ),
+    /* Halo ring 2 */
+    radial-gradient(
+        circle at 105% -5%,
+        transparent 70px,
+        rgba(130, 170, 255, 0.045) 75px,
+        rgba(130, 170, 255, 0.1) 79px,
+        rgba(130, 170, 255, 0.045) 83px,
+        transparent 90px
+      ),
+    /* Halo ring 1 — innermost, sharpest */
+    radial-gradient(
+        circle at 105% -5%,
+        transparent 36px,
+        rgba(130, 170, 255, 0.06) 40px,
+        rgba(130, 170, 255, 0.13) 44px,
+        rgba(130, 170, 255, 0.06) 48px,
+        transparent 55px
+      ),
+    /* Comet cyan bloom — top-right, soft atmospheric glow */
+    radial-gradient(
+        ellipse 65% 55% at 108% -8%,
+        rgba(92, 192, 196, 0.1) 0%,
+        rgba(92, 192, 196, 0.04) 45%,
+        transparent 70%
+      ),
+    /* Nebula whisper — bottom-left counterpole */
+    radial-gradient(
+        ellipse 45% 35% at -8% 108%,
+        rgba(130, 170, 255, 0.05) 0%,
+        transparent 65%
+      ),
+    /* Deep-space base gradient */
+    linear-gradient(300deg, #0b0c1a 0%, #0a0b14 50%, #090a12 100%);
+}
