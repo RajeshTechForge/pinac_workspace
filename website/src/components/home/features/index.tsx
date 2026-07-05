@@ -7,7 +7,7 @@ import {
   Server,
 } from "lucide-react";
 import { motion } from "motion/react";
-import SectionHeader from "./SectionHeader";
+import SectionHeader from "../SectionHeader";
 import AnchorRow from "./AnchorRow";
 import FeatureGridCard from "./FeatureGridCard";
 import ClosingRow from "./ClosingRow";
