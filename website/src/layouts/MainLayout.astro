@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import Navbar from "../components/layout/Navbar.tsx";
+import { getSession } from "../lib/auth";
 
 type Props = {
   title?: string;
@@ -13,6 +14,21 @@ const {
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
+
+// Resolve session server-side so the Navbar knows whether to show the
+// profile avatar or the guest Login / Sign-Up buttons.
+const session = await getSession(Astro.request);
+const navUser = session?.user
+  ? {
+      name:
+        (session.user.user_metadata?.full_name as string | undefined) ??
+        session.user.email ??
+        "User",
+      email: session.user.email ?? "",
+      avatarUrl:
+        (session.user.user_metadata?.avatar_url as string | undefined) ?? null,
+    }
+  : null;
 ---
 
 <html lang="en">
@@ -37,7 +53,7 @@ const currentPath = Astro.url.pathname;
     </div>
 
     <!-- Fixed navbar sits outside z-10 stacking context so fixed positioning stacks correctly -->
-    <Navbar currentPath={currentPath} githubStars={35} client:load />
+    <Navbar currentPath={currentPath} githubStars={35} user={navUser} client:load />
 
     <!-- All page content sits above the background layers -->
     <div class="relative z-10 flex min-h-screen flex-col">
