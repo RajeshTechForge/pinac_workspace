@@ -115,8 +115,15 @@ function ProfileDropdown({ user, onClose }: ProfileDropdownProps) {
 
   const handleSignOut = async () => {
     onClose();
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/";
+    try {
+      const res = await fetch("/api/auth/signout", { method: "POST" });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: boolean; redirectTo: string }
+        | null;
+      window.location.href = data?.redirectTo ?? "/";
+    } catch {
+      window.location.href = "/";
+    }
   };
 
   return (
@@ -212,8 +219,15 @@ export function Navbar({ currentPath, githubStars, user = null }: NavbarProps) {
 
   const handleMobileSignOut = async () => {
     closeMenu();
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/";
+    try {
+      const res = await fetch("/api/auth/signout", { method: "POST" });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: boolean; redirectTo: string }
+        | null;
+      window.location.href = data?.redirectTo ?? "/";
+    } catch {
+      window.location.href = "/";
+    }
   };
 
   const surfaceClasses = isScrolled
@@ -321,14 +335,14 @@ export function Navbar({ currentPath, githubStars, user = null }: NavbarProps) {
               /* ── Guest: Login + Sign Up ── */
               <>
                 <a
-                  href="/auth/login"
+                  href="/auth/sign-in"
                   className="hidden rounded-md px-3 py-2 font-sans text-sm text-star-200 transition-colors hover:bg-void-500/80 hover:text-star-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nebula major-xs:inline-flex items-center justify-center whitespace-nowrap shrink-0"
                 >
                   Login
                 </a>
 
                 <a
-                  href="/auth/signup"
+                  href="/auth/sign-up"
                   className="inline-flex items-center justify-center rounded-md bg-nebula/90 px-4 py-2 font-sans text-sm font-medium text-void-900 transition-colors hover:bg-nebula focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nebula focus-visible:ring-offset-2 focus-visible:ring-offset-void-900 whitespace-nowrap shrink-0"
                 >
                   Sign Up
@@ -459,14 +473,14 @@ export function Navbar({ currentPath, githubStars, user = null }: NavbarProps) {
               /* ── Mobile: guest actions ── */
               <>
                 <a
-                  href="/auth/signup"
+                  href="/auth/sign-up"
                   onClick={closeMenu}
                   className="flex items-center justify-center w-full rounded-xl bg-nebula/90 px-4 py-3.5 font-sans text-base font-semibold text-void-900 transition-colors hover:bg-nebula focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nebula"
                 >
                   Sign Up
                 </a>
                 <a
-                  href="/auth/login"
+                  href="/auth/sign-in"
                   onClick={closeMenu}
                   className="flex items-center justify-center w-full rounded-xl bg-nebula/10 border border-nebula/20 px-4 py-3.5 font-sans text-base font-medium text-nebula transition-colors hover:bg-nebula/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nebula"
                 >

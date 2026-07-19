@@ -3,15 +3,69 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Eye, EyeOff } from "lucide-react";
 
-export function LoginForm() {
+type ErrorCode =
+  | "INVALID_CREDENTIALS"
+  | "EMAIL_NOT_VERIFIED"
+  | "RATE_LIMITED"
+  | "INVALID_BODY"
+  | "API_ERROR";
+
+const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  INVALID_CREDENTIALS: "Incorrect email or password.",
+  EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
+  RATE_LIMITED: "Too many attempts. Please wait and try again.",
+  INVALID_BODY: "Please enter a valid email and password.",
+  API_ERROR: "Sign-in failed. Please try again.",
+};
+
+function readErrorParam(): string | null {
+  if (typeof window === "undefined") return null;
+  const err = new URLSearchParams(window.location.search).get("error");
+  if (err === "STATE_MISMATCH") return "Sign-in was interrupted. Please try again.";
+  if (err === "OAUTH_FAILED") return "Social sign-in failed. Please try again.";
+  return null;
+}
+
+export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(readErrorParam());
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSocial = (provider: "google" | "github") => {
+    // Top-level navigation; the server sets the oauth_state cookie and 302s
+    // to WorkOS. No fetch needed.
+    window.location.href = `/api/auth/social/${provider}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log("Login attempt", { email, password });
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: true; redirectTo: string }
+        | { ok: false; error: { code: ErrorCode; message: string } }
+        | null;
+
+      if (data && data.ok) {
+        window.location.href = data.redirectTo;
+        return;
+      }
+      const code = data && !data.ok ? data.error.code : "API_ERROR";
+      setError(ERROR_MESSAGES[code] ?? "Sign-in failed.");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -25,8 +79,20 @@ export function LoginForm() {
         </p>
       </div>
 
+      {error && (
+        <div className="rounded border border-redshift/40 bg-redshift/10 px-3 py-2 text-sm text-redshift">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
-        <Button variant="ghost" className="border border-void-500/50">
+        <Button
+          type="button"
+          variant="ghost"
+          className="border border-void-500/50"
+          onClick={() => handleSocial("google")}
+          disabled={submitting}
+        >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
               fill="currentColor"
@@ -47,7 +113,13 @@ export function LoginForm() {
           </svg>
           Google
         </Button>
-        <Button variant="ghost" className="border border-void-500/50">
+        <Button
+          type="button"
+          variant="ghost"
+          className="border border-void-500/50"
+          onClick={() => handleSocial("github")}
+          disabled={submitting}
+        >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
           </svg>
@@ -114,15 +186,15 @@ export function LoginForm() {
           </div>
         </div>
 
-        <Button type="submit" fullWidth className="mt-6">
-          Sign in
+        <Button type="submit" fullWidth className="mt-6" disabled={submitting}>
+          {submitting ? "Signing in…" : "Sign in"}
         </Button>
       </form>
 
       <div className="text-center text-sm text-star-300 mt-4">
         Don't have an account?{" "}
         <a
-          href="/auth/signup"
+          href="/auth/sign-up"
           className="text-nebula hover:text-star-100 transition-colors font-medium"
         >
           Sign up

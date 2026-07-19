@@ -3,7 +3,22 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Eye, EyeOff } from "lucide-react";
 
-export function SignupForm() {
+type ErrorCode =
+  | "INVALID_EMAIL"
+  | "WEAK_PASSWORD"
+  | "USER_EXISTS"
+  | "INVALID_BODY"
+  | "API_ERROR";
+
+const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  INVALID_EMAIL: "Please enter a valid email address.",
+  WEAK_PASSWORD: "Password must be at least 8 characters.",
+  USER_EXISTS: "An account with this email already exists.",
+  INVALID_BODY: "Please complete all required fields.",
+  API_ERROR: "Sign-up failed. Please try again.",
+};
+
+export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -13,10 +28,11 @@ export function SignupForm() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    // Clear error on type
     if (errors[e.target.name]) {
       setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     }
@@ -34,11 +50,51 @@ export function SignupForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSocial = (provider: "google" | "github") => {
+    window.location.href = `/api/auth/social/${provider}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      // TODO: Implement signup logic
-      console.log("Signup attempt", formData);
+    if (submitting) return;
+    setFormError(null);
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: true; redirectTo: string }
+        | { ok: false; error: { code: ErrorCode; message: string } }
+        | null;
+
+      if (data && data.ok) {
+        window.location.href = data.redirectTo;
+        return;
+      }
+      const code = data && !data.ok ? data.error.code : "API_ERROR";
+      if (code === "WEAK_PASSWORD") {
+        setErrors((prev) => ({
+          ...prev,
+          password: ERROR_MESSAGES.WEAK_PASSWORD,
+        }));
+      } else if (code === "INVALID_EMAIL") {
+        setErrors((prev) => ({ ...prev, email: ERROR_MESSAGES.INVALID_EMAIL }));
+      } else {
+        setFormError(ERROR_MESSAGES[code] ?? "Sign-up failed.");
+      }
+    } catch {
+      setFormError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -53,8 +109,20 @@ export function SignupForm() {
         </p>
       </div>
 
+      {formError && (
+        <div className="rounded border border-redshift/40 bg-redshift/10 px-3 py-2 text-sm text-redshift">
+          {formError}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
-        <Button variant="ghost" className="border border-void-500/50">
+        <Button
+          type="button"
+          variant="ghost"
+          className="border border-void-500/50"
+          onClick={() => handleSocial("google")}
+          disabled={submitting}
+        >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
               fill="currentColor"
@@ -75,7 +143,13 @@ export function SignupForm() {
           </svg>
           Google
         </Button>
-        <Button variant="ghost" className="border border-void-500/50">
+        <Button
+          type="button"
+          variant="ghost"
+          className="border border-void-500/50"
+          onClick={() => handleSocial("github")}
+          disabled={submitting}
+        >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
           </svg>
@@ -122,6 +196,7 @@ export function SignupForm() {
           required
           value={formData.email}
           onChange={handleChange}
+          error={errors.email}
         />
 
         <div className="space-y-1.5">
@@ -169,15 +244,15 @@ export function SignupForm() {
           error={errors.confirmPassword}
         />
 
-        <Button type="submit" fullWidth className="mt-6">
-          Create account
+        <Button type="submit" fullWidth className="mt-6" disabled={submitting}>
+          {submitting ? "Creating account…" : "Create account"}
         </Button>
       </form>
 
       <div className="text-center text-sm text-star-300 mt-4">
         Already have an account?{" "}
         <a
-          href="/auth/login"
+          href="/auth/sign-in"
           className="text-nebula hover:text-star-100 transition-colors font-medium"
         >
           Sign in
