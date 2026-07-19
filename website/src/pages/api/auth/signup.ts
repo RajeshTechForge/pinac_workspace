@@ -1,7 +1,11 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { workos } from "../../../lib/workos";
+import {
+  workos,
+  WORKOS_CLIENT_ID,
+  WORKOS_COOKIE_PASSWORD,
+} from "../../../lib/workos";
 
 interface SignupRequestBody {
   email?: unknown;
@@ -92,13 +96,75 @@ export const POST: APIRoute = async ({ request }) => {
           : undefined,
     });
 
-    const success: SignupSuccess = {
-      ok: true,
-      userId: user.id,
-      redirectTo: "/auth/sign-in?created=1",
-      pendingVerification: true,
-    };
-    return json(success, 201);
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      await workos.userManagement.authenticateWithPassword({
+        clientId: WORKOS_CLIENT_ID,
+        email: normalizedEmail,
+        password,
+        session: {
+          sealSession: true,
+          cookiePassword: WORKOS_COOKIE_PASSWORD,
+        },
+      });
+
+      // Should never reach here for a freshly-created unverified user;
+      // fall back to the legacy "sign in to verify" path defensively.
+      return json(
+        {
+          ok: true,
+          userId: user.id,
+          redirectTo: "/auth/sign-in?created=1",
+          pendingVerification: true,
+        },
+        201
+      );
+    } catch (authErr) {
+      const aErr = authErr as {
+        code?: string;
+        message?: string;
+        pendingAuthenticationToken?: string;
+      };
+      const aCode = aErr.code ?? "";
+
+      if (aCode === "email_verification_required") {
+        const token = aErr.pendingAuthenticationToken ?? "";
+        if (!token) {
+          return json(
+            {
+              ok: true,
+              userId: user.id,
+              redirectTo: "/auth/sign-in?created=1",
+              pendingVerification: true,
+            },
+            201
+          );
+        }
+        const encodedEmail = encodeURIComponent(normalizedEmail);
+        const encodedToken = encodeURIComponent(token);
+        return json(
+          {
+            ok: true,
+            userId: user.id,
+            redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodedToken}`,
+            pendingVerification: true,
+          },
+          201
+        );
+      }
+
+      // Any other post-creation auth error: don't leak details, fall back
+      // to sign-in so the user can still trigger verification manually.
+      return json(
+        {
+          ok: true,
+          userId: user.id,
+          redirectTo: "/auth/sign-in?created=1",
+          pendingVerification: true,
+        },
+        201
+      );
+    }
   } catch (err) {
     const e = err as { code?: string; message?: string };
     const msg = e.message ?? "";
