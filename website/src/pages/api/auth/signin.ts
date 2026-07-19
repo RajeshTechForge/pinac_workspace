@@ -23,6 +23,8 @@ interface ApiError {
     | "RATE_LIMITED"
     | "API_ERROR";
   message: string;
+  pendingAuthenticationToken?: string;
+  email?: string;
 }
 
 interface SigninSuccess {
@@ -31,7 +33,9 @@ interface SigninSuccess {
   redirectTo: string;
 }
 
-type SigninResponse = SigninSuccess | { ok: false; error: ApiError };
+type SigninResponse =
+  | SigninSuccess
+  | { ok: false; error: ApiError; redirectTo?: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -105,10 +109,18 @@ export const POST: APIRoute = async ({ request }) => {
     );
     return res;
   } catch (err) {
-    const e = err as { code?: string; message?: string };
+    const e = err as {
+      code?: string;
+      message?: string;
+      pendingAuthenticationToken?: string;
+    };
     const code = e.code ?? "";
 
     if (code === "email_verification_required") {
+      const pat = e.pendingAuthenticationToken ?? "";
+      const encodedEmail = encodeURIComponent(
+        email.trim().toLowerCase(),
+      );
       return json(
         {
           ok: false,
@@ -116,7 +128,10 @@ export const POST: APIRoute = async ({ request }) => {
             code: "EMAIL_NOT_VERIFIED",
             message:
               "Please verify your email address before signing in.",
+            pendingAuthenticationToken: pat,
+            email: email.trim().toLowerCase(),
           },
+          redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodeURIComponent(pat)}`,
         },
         403
       );

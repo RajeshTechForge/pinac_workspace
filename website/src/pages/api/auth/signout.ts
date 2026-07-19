@@ -5,6 +5,7 @@ import {
   workos,
   WORKOS_COOKIE_PASSWORD,
   SESSION_COOKIE,
+  SIGNIN_ROUTE,
   baseCookieOptions,
 } from "../../../lib/workos";
 
@@ -48,7 +49,7 @@ export const POST: APIRoute = async ({ cookies }) => {
 
   const opts = baseCookieOptions();
   const res = new Response(
-    JSON.stringify({ ok: true, redirectTo: "/signin" } satisfies SignoutResponse),
+    JSON.stringify({ ok: true, redirectTo: SIGNIN_ROUTE } satisfies SignoutResponse),
     {
       status: 200,
       headers: { "content-type": "application/json" },

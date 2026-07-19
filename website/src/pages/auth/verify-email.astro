@@ -1,0 +1,8 @@
+---
+import AuthLayout from "../../layouts/AuthLayout.astro";
+import { EmailVerificationForm } from "../../components/auth/EmailVerificationForm";
+---
+
+<AuthLayout title="Verify Email - Pinac Workspace">
+    <EmailVerificationForm client:load />
+</AuthLayout>

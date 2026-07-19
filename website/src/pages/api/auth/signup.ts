@@ -24,6 +24,7 @@ interface SignupSuccess {
   ok: true;
   userId: string;
   redirectTo: string;
+  pendingVerification: boolean;
 }
 
 type SignupResponse = SignupSuccess | { ok: false; error: ApiError };
@@ -94,7 +95,8 @@ export const POST: APIRoute = async ({ request }) => {
     const success: SignupSuccess = {
       ok: true,
       userId: user.id,
-      redirectTo: "/signin?created=1",
+      redirectTo: "/auth/sign-in?created=1",
+      pendingVerification: true,
     };
     return json(success, 201);
   } catch (err) {

@@ -34,7 +34,7 @@ export const OAUTH_STATE_COOKIE = "oauth_state";
 /** Routes configurable via env, with sensible dev defaults. */
 export const APP_BASE_URL =
   import.meta.env.WORKOS_APP_BASE_URL ?? "http://localhost:4321";
-export const SIGNIN_ROUTE = "/signin";
+export const SIGNIN_ROUTE = "/auth/sign-in";
 export const POST_LOGIN_ROUTE =
   import.meta.env.WORKOS_POST_LOGIN_ROUTE ?? "/dashboard";
 

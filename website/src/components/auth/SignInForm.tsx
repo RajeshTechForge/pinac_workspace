@@ -18,20 +18,48 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   API_ERROR: "Sign-in failed. Please try again.",
 };
 
-function readErrorParam(): string | null {
-  if (typeof window === "undefined") return null;
-  const err = new URLSearchParams(window.location.search).get("error");
-  if (err === "STATE_MISMATCH") return "Sign-in was interrupted. Please try again.";
-  if (err === "OAUTH_FAILED") return "Social sign-in failed. Please try again.";
-  return null;
+function readInitialMessage(): {
+  message: string | null;
+  variant: "error" | "success";
+} {
+  if (typeof window === "undefined") return { message: null, variant: "error" };
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("created") === "1") {
+    return {
+      message:
+        "Account created! Sign in with your credentials to verify your email.",
+      variant: "success",
+    };
+  }
+
+  const err = params.get("error");
+  if (err === "STATE_MISMATCH")
+    return {
+      message: "Sign-in was interrupted. Please try again.",
+      variant: "error",
+    };
+  if (err === "OAUTH_FAILED")
+    return {
+      message: "Social sign-in failed. Please try again.",
+      variant: "error",
+    };
+
+  return { message: null, variant: "error" };
 }
 
 export function SignInForm() {
+  const initialMsg = readInitialMessage();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(readErrorParam());
+  const [error, setError] = useState<string | null>(
+    initialMsg.variant === "error" ? initialMsg.message : null,
+  );
+  const [successBanner, setSuccessBanner] = useState<string | null>(
+    initialMsg.variant === "success" ? initialMsg.message : null,
+  );
 
   const handleSocial = (provider: "google" | "github") => {
     // Top-level navigation; the server sets the oauth_state cookie and 302s
@@ -43,6 +71,7 @@ export function SignInForm() {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setSuccessBanner(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/auth/signin", {
@@ -52,13 +81,25 @@ export function SignInForm() {
       });
       const data = (await res.json().catch(() => null)) as
         | { ok: true; redirectTo: string }
-        | { ok: false; error: { code: ErrorCode; message: string } }
+        | {
+            ok: false;
+            error: { code: ErrorCode; message: string };
+            redirectTo?: string;
+          }
         | null;
 
       if (data && data.ok) {
         window.location.href = data.redirectTo;
         return;
       }
+
+      // If the server returned a redirect (e.g. email verification needed),
+      // navigate there instead of showing an inline error.
+      if (data && !data.ok && data.redirectTo) {
+        window.location.href = data.redirectTo;
+        return;
+      }
+
       const code = data && !data.ok ? data.error.code : "API_ERROR";
       setError(ERROR_MESSAGES[code] ?? "Sign-in failed.");
     } catch {
@@ -78,6 +119,12 @@ export function SignInForm() {
           Enter your credentials to access your workspace
         </p>
       </div>
+
+      {successBanner && (
+        <div className="rounded border border-pulsar/40 bg-pulsar/10 px-3 py-2 text-sm text-pulsar">
+          {successBanner}
+        </div>
+      )}
 
       {error && (
         <div className="rounded border border-redshift/40 bg-redshift/10 px-3 py-2 text-sm text-redshift">

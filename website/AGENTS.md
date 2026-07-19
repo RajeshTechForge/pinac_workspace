@@ -124,7 +124,55 @@ bg-void-800/60 backdrop-blur-sm border border-void-500/20
 ```
 This lets the atmospheric layers bleed through subtly, preserving depth while keeping content legible.
 
----
-
 ### The Golden Rule
 **When in doubt, do less and ask. A smaller correct implementation beats a larger incorrect one. Cleverness, speculation, and scope creep are bugs.**
+
+---
+
+# File Tree
+
+```
+./src/
+├── components
+│   ├── auth
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── SignInForm.tsx
+│   │   └── SignUpForm.tsx
+│   ├── home
+│   │   ├── features
+│   │   │   ├── AnchorRow.tsx
+│   │   │   ├── ClosingRow.tsx
+│   │   │   ├── FeatureGridCard.tsx
+│   │   │   ├── FeatureVisuals.tsx
+│   │   │   └── index.tsx
+│   │   ├── Hero.tsx
+│   │   ├── SectionHeader.tsx
+│   │   └── TrustedBy.tsx
+│   └── layout
+│       └── Navbar.tsx
+├── layouts
+│   ├── AuthLayout.astro
+│   └── MainLayout.astro
+├── lib
+│   └── workos.ts
+├── pages
+│   ├── api
+│   │   └── auth
+│   │       ├── social
+│   │       │   └── [provider].ts
+│   │       ├── callback.ts
+│   │       ├── signin.ts
+│   │       ├── signout.ts
+│   │       └── signup.ts
+│   ├── auth
+│   │   ├── sign-in.astro
+│   │   └── sign-up.astro
+│   └── index.astro
+├── styles
+│   └── global.css
+├── env.d.ts
+└── middleware.ts
+```
+
+> **NOTE:** DO NOT touch `.env` file. Use `.env.example` file for all requirements.
