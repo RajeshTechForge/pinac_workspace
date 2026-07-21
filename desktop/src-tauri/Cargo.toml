@@ -30,3 +30,14 @@ thiserror = "2"
 aes-gcm = "0.10"
 base64 = "0.22"
 rand = "0.8"
+
+# ── Auth / deep-link plugins (desktop only) ──────────────────────────────────
+# tauri-plugin-deep-link  — provides the pinac:// URI scheme handler and the
+#   onOpenUrl JS API used by deepLinkHandler.ts.  Required for the capability
+#   permission "deep-link:default" and for app.deep_link().register().
+# tauri-plugin-single-instance — ensures that when the OS opens a deep link
+#   while the app is already running (Windows/Linux spawns a 2nd process), the
+#   URL is forwarded to the primary instance via argv[1] in the init() callback.
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+tauri-plugin-deep-link = "2.0.0"
+tauri-plugin-single-instance = "2.4.3"
