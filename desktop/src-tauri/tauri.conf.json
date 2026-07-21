@@ -33,5 +33,12 @@
       "icons/icon.ico"
     ],
     "resources": ["config.toml"]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["pinac"]
+      }
+    }
   }
 }
