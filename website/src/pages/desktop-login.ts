@@ -8,7 +8,7 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { workos, WORKOS_NATIVE_CLIENT_ID, DESKTOP_CALLBACK_URI } from "../lib/workos-native";
+import { workos, WORKOS_CLIENT_ID, DESKTOP_CALLBACK_URI } from "../lib/workos";
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -101,7 +101,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
   // ── client_id must match the registered native client ID ─────────────────
   // This prevents a malicious page from using this relay route with a
   // different client ID to phish WorkOS auth flows.
-  if (clientId !== WORKOS_NATIVE_CLIENT_ID) {
+  if (clientId !== WORKOS_CLIENT_ID) {
     return errorPage(
       400,
       "Unknown Client",
@@ -117,16 +117,19 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     // does not need to (and must not) regenerate them.
     // Ref: WorkOS Node SDK docs — getAuthorizationUrl options (July 2025).
     authUrl = workos.userManagement.getAuthorizationUrl({
-      clientId:            WORKOS_NATIVE_CLIENT_ID,
+      clientId:            WORKOS_CLIENT_ID,
       redirectUri:         DESKTOP_CALLBACK_URI,
       state,
       // PKCE params forwarded verbatim from the desktop app:
       codeChallenge,
       codeChallengeMethod: "S256",
-      // provider is omitted so WorkOS shows its standard multi-method sign-in UI,
-      // letting the user choose email/password, Google, or GitHub — same as the
-      // existing web login experience.
-    } as Parameters<typeof workos.userManagement.getAuthorizationUrl>[0]);
+      // "authkit" instructs WorkOS to render its hosted AuthKit sign-in UI,
+      // which lets the user choose email/password, Google, or GitHub — exactly
+      // the same multi-method experience as the web login. One of provider /
+      // connectionId / organizationId is mandatory; this is the correct value
+      // for a generic password + social sign-in page.
+      provider: "authkit",
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[desktop-login] getAuthorizationUrl failed:", message);

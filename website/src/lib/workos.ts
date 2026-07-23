@@ -2,7 +2,7 @@ import { WorkOS } from "@workos-inc/node";
 
 const apiKey = import.meta.env.WORKOS_API_KEY;
 const clientId = import.meta.env.WORKOS_CLIENT_ID;
-const cookiePassword = import.meta.env.WORKOS_COOKIE_PASSWORD;
+const cookiePassword = import.meta.env.COOKIE_PASSWORD;
 
 if (!apiKey) {
   throw new Error("Missing env var WORKOS_API_KEY");
@@ -12,7 +12,7 @@ if (!clientId) {
 }
 if (!cookiePassword || cookiePassword.length < 32) {
   throw new Error(
-    "Missing or too-short env var WORKOS_COOKIE_PASSWORD (must be >= 32 chars)"
+    "Missing or too-short env var COOKIE_PASSWORD (must be >= 32 chars)"
   );
 }
 
@@ -32,11 +32,12 @@ export const SESSION_COOKIE = "wos-session";
 export const OAUTH_STATE_COOKIE = "oauth_state";
 
 /** Routes configurable via env, with sensible dev defaults. */
-export const APP_BASE_URL =
-  import.meta.env.WORKOS_APP_BASE_URL ?? "http://localhost:4321";
+export const APP_BASE_URL = import.meta.env.APP_BASE_URL;
 export const SIGNIN_ROUTE = "/auth/sign-in";
-export const POST_LOGIN_ROUTE =
-  import.meta.env.WORKOS_POST_LOGIN_ROUTE ?? "/dashboard";
+export const POST_LOGIN_ROUTE = import.meta.env.POST_LOGIN_ROUTE;
+
+/** Configuration for the public client */
+export const DESKTOP_CALLBACK_URI = APP_BASE_URL + "/api/auth/desktop-callback";
 
 /** Routes that require an authenticated session. */
 export const PROTECTED_ROUTE_PREFIXES = ["/dashboard", "/account"];
