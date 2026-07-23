@@ -9,46 +9,18 @@
  *  5. Await the deep link callback handled by deepLinkHandler.ts.
  */
 
-import { open } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { generateCodeVerifier, generateCodeChallenge, generateState } from "./pkce";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
-/** Shape of an in-flight PKCE auth attempt. */
 interface PendingFlow {
-  /** The raw verifier — held ONLY in memory, never serialised to disk. */
   readonly codeVerifier: string;
-  /** Unix timestamp (ms) after which this flow is considered expired. */
   readonly expiresAt: number;
 }
 
-// ---------------------------------------------------------------------------
-// In-memory flow store
-// ---------------------------------------------------------------------------
-
-/**
- * Typed, module-level store for in-flight auth attempts.
- *
- * Keyed by the random `state` string so concurrent login attempts don't
- * clobber each other (e.g. user clicks Login twice quickly).
- *
- * SECURITY:
- * - Never iterate or log the values of this Map.
- * - Entries are cleared immediately on success, failure, or timeout.
- * - `state` keys are 64-character hex strings (256 bits of entropy).
- */
 const pendingFlows = new Map<string, PendingFlow>();
-
-/** How long (ms) a pending flow is valid before it is considered abandoned. */
 const FLOW_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/** Removes all flows whose TTL has expired. Called before each new flow. */
 function pruneExpiredFlows(): void {
   const now = Date.now();
   for (const [state, flow] of pendingFlows) {
@@ -58,25 +30,8 @@ function pruneExpiredFlows(): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Starts a PKCE login attempt:
- *  1. Generates verifier / challenge / state.
- *  2. Stores the verifier in memory (keyed by state, TTL = 10 min).
- *  3. Opens the system browser to the website's /desktop-login route.
- *
- * After calling this, the UI should indicate "Waiting for browser login…"
- * and listen for `"auth:success"` / `"auth:error"` events from deepLinkHandler.ts.
- *
- * @throws if the `VITE_WEBSITE_BASE_URL` env var is not set, or if the
- *         browser open call fails.
- */
+// PUBLIC API
 export async function startLogin(): Promise<void> {
-  // Read the website origin from Vite env.
-  // Set VITE_WEBSITE_BASE_URL in desktop/.env (e.g. https://pinac.dev).
   const websiteBaseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as string | undefined;
   if (!websiteBaseUrl) {
     throw new Error(
@@ -84,16 +39,13 @@ export async function startLogin(): Promise<void> {
     );
   }
 
-  // Read the native (public) WorkOS client ID from Vite env.
-  // This is safe to embed — it's a public client, no secret.
-  const nativeClientId = import.meta.env.VITE_WORKOS_NATIVE_CLIENT_ID as string | undefined;
+  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as string | undefined;
   if (!nativeClientId) {
     throw new Error(
-      "[auth] VITE_WORKOS_NATIVE_CLIENT_ID is not set. Add it to desktop/.env."
+      "[auth] VITE_WORKOS_CLIENT_ID is not set. Add it to desktop/.env."
     );
   }
 
-  // Prune stale flows before adding a new one.
   pruneExpiredFlows();
 
   // Generate fresh PKCE params for this attempt.
@@ -109,19 +61,13 @@ export async function startLogin(): Promise<void> {
     expiresAt: Date.now() + FLOW_TTL_MS,
   });
 
-  // Build the URL to the website's desktop-login relay route.
-  // The website validates and forwards these PKCE params to WorkOS's
-  // getAuthorizationUrl call, then redirects the browser into the
-  // existing custom-UI sign-in experience.
   const loginUrl = new URL(`${websiteBaseUrl}/desktop-login`);
   loginUrl.searchParams.set("code_challenge", codeChallenge);
   loginUrl.searchParams.set("code_challenge_method", "S256");
   loginUrl.searchParams.set("state", state);
   loginUrl.searchParams.set("client_id", nativeClientId);
-
-  // RFC 8252 §4: MUST use the system browser, never an embedded webview.
-  // tauri-plugin-opener's open() uses the OS default browser handler.
-  await open(loginUrl.toString());
+  
+  await openUrl(loginUrl.toString());
 }
 
 /**

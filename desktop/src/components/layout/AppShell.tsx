@@ -6,11 +6,26 @@ import ChatArea from "../chat/ChatArea";
 import InputArea from "../input/InputArea";
 import SettingsPanel from "../settings/SettingsPanel";
 import CommandPalette from "../command/CommandPalette";
-import { useChatContext } from "../../context/ChatContext";
+import { ChatProvider, useChatContext } from "../../context/ChatContext";
 import { useResizablePanel } from "../../hooks/useResizablePanel";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 
+/**
+ * AppShell — The authenticated chat UI shell.
+ *
+ * Wraps itself in ChatProvider so that provider (and all its effects —
+ * DB queries, LLM config loading, etc.) only initialises once the user
+ * has successfully authenticated via AuthGate.
+ */
 export default function AppShell() {
+  return (
+    <ChatProvider>
+      <AppShellInner />
+    </ChatProvider>
+  );
+}
+
+function AppShellInner() {
   const { state, dispatch } = useChatContext();
   const { handleMouseDown, sidebarWidth } = useResizablePanel();
   const [windowWidth, setWindowWidth] = useState(

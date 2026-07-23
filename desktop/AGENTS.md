@@ -89,31 +89,47 @@ Code is not done until it can be reviewed, tested, and deployed as-is without mo
 ## File Structure
 
 ```
-.
-├── src-tauri/
-│   ├── capabilities/default.json # Tauri capabilities manifest
-│   ├── src/
-│   │   ├── llm/            # Manages LLMs requests
-│   │   ├── db/             # Manages SQLite database
-│   │   ├── secure_storage.rs   # For storing api-keys securely
+├── src
+│   ├── components
+│   │   ├── auth/
+│   │   ├── chat/
+│   │   ├── command/
+│   │   ├── input/
+│   │   ├── layout/
+│   │   ├── settings/
+│   │   ├── sidebar/
+│   │   ├── ui/
+│   │   └── LoginButton.example.tsx
+│   ├── context/
+│   ├── hooks/
+│   ├── lib
+│   │   └── auth/
+│   ├── mocks/
+│   ├── services
+│   │   ├── apiKey.ts
+│   │   ├── config.ts
+│   │   ├── conversation.ts
+│   │   ├── llm.ts
+│   │   └── llmSettings.ts
+│   ├── types/
+│   ├── App.tsx
+│   ├── main.css
+│   ├── main.tsx
+│   └── vite-env.d.ts
+├── src-tauri
+│   ├── capabilities
+│   │   └── default.json
+│   ├── icons/
+│   ├── src
+│   │   ├── db/
+│   │   ├── llm/
 │   │   ├── lib.rs
-│   │   └── main.rs         # Rust entry point and command definitions
-│   ├── cargo.toml          # Rust dependencies and build config
-│   └── tauri.conf.json     # Tauri configuration file
-├── src/
-│   ├── components/         # Reusable UI components
-│   │  ├── chat/
-│   │  ├── command/
-│   │  ├── input/
-│   │  ├── layout/
-│   │  ├── sidebar/
-│   │  └── ui/
-│   ├── contexts/           # React Context providers
-│   ├── hooks/              # Custom React hooks
-│   ├── types/              # TypeScript type definitions
-│   ├── App.tsx             # Main app component
-│   ├── main.tsx            # React entry point
-│   └── main.css            # Tailwind designs and global styles
-├── index.html
-└── package.json
+│   │   ├── main.rs
+│   │   └── secure_storage.rs
+│   ├── Cargo.toml
+│   ├── config.toml
+│   └── tauri.conf.json
+├── index.html/
+├── package.json/
+└── vite.config.ts
 ```

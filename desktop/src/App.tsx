@@ -1,10 +1,10 @@
-import { ChatProvider } from "./context/ChatContext";
-import AppShell from "./components/layout/AppShell";
+import { AuthProvider } from "./context/AuthContext";
+import { AuthGate } from "./components/auth";
 
 export default function App() {
   return (
-    <ChatProvider>
-      <AppShell />
-    </ChatProvider>
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }

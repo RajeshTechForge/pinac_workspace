@@ -1,25 +1,5 @@
 /**
  * deepLinkHandler.ts — Receives and processes pinac:// deep-link callbacks.
- *
- * Registers two listeners (called once, at app startup via `initDeepLinkHandler`):
- *
- *  1. `onOpenUrl` from @tauri-apps/plugin-deep-link — fires on macOS when the OS
- *     opens a deep link while the app is already running (or on app launch with
- *     the URL as the first open event).
- *
- *  2. A Tauri event listener for "deep-link://new-url" — emitted by the Rust
- *     single-instance plugin callback (lib.rs) when Windows / Linux forward a
- *     second-process deep-link to the primary process.
- *
- * Both paths converge at `handleDeepLinkUrl()`, which:
- *  - Validates the URL scheme and path.
- *  - Extracts `code` and `state` query params.
- *  - Validates `state` against the in-memory pending flow (anti-CSRF).
- *  - Calls `exchangeCodeForTokens` with the stored `code_verifier`.
- *  - Stores the resulting tokens via `saveTokens`.
- *  - Clears the in-memory flow entry.
- *  - Emits `"auth:success"` or `"auth:error"` via the internal event bus
- *    so the UI layer can react without coupling to this module.
  */
 
 import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
@@ -28,23 +8,11 @@ import { getPendingFlow, clearPendingFlow } from "./authFlow";
 import { exchangeCodeForTokens } from "./tokenExchange";
 import { saveTokens } from "./secureStorage";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Discriminated union of all deep-link auth failure reasons.
- * The UI layer matches on `.code` to show an appropriate message.
- */
 export type DeepLinkAuthError =
   | { readonly code: "INVALID_URL";    readonly message: string }
   | { readonly code: "MISSING_PARAMS"; readonly message: string }
   | { readonly code: "NO_PENDING_FLOW";
       readonly message: string;
-      /**
-       * Present when the app was not running when the deep link fired (cold start).
-       * The user needs to re-initiate login from within the app.
-       */
       readonly coldStart?: true }
   | { readonly code: "STATE_MISMATCH"; readonly message: string }
   | { readonly code: "FLOW_EXPIRED";   readonly message: string }
@@ -93,13 +61,6 @@ function emitError(error: DeepLinkAuthError): void {
 // Core handler
 // ---------------------------------------------------------------------------
 
-/**
- * Processes a raw deep-link URL string received from either listener.
- *
- * This function is the security boundary for the inbound auth callback.
- * Every rejection path emits a typed error and returns early — never silently
- * succeeds or partially processes an invalid URL.
- */
 async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   // Step 1: Parse and validate the URL structure.
   let parsed: URL;
@@ -142,17 +103,9 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   }
 
   // Step 3: Look up the in-memory pending flow.
-  // SECURITY: This is the primary CSRF defence. If state doesn't match a flow
-  // we started, we refuse to proceed — even if the code looks valid.
   const pendingFlow = getPendingFlow(state);
 
   if (!pendingFlow) {
-    // Distinguish cold-start (no flows at all) from state mismatch (flows exist
-    // but none match) to give the UI a better error message.
-    const hasPendingFlows =
-      typeof (getPendingFlow as { _size?: number })._size === "number"
-        ? (getPendingFlow as { _size?: number })._size !== 0
-        : false; // Can't directly check Map size from here; treat as cold-start.
     emitError({
       code: "NO_PENDING_FLOW",
       message:
@@ -181,7 +134,6 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   }
 
   // Step 6: Exchange code + verifier for tokens.
-  // The verifier is only ever sent in this one call and is then discarded.
   const result = await exchangeCodeForTokens(code, codeVerifier, nativeClientId);
 
   if (!result.ok) {
@@ -200,7 +152,6 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
     await saveTokens({
       accessToken,
       refreshToken,
-      // expiresAt = now + (expiresIn seconds) - 30s safety buffer.
       expiresAt: Date.now() + ((accessTokenExpiresIn ?? 300) - 30) * 1000,
       userId: user.id,
       userEmail: user.email,
@@ -226,14 +177,6 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
 
 let initialised = false;
 
-/**
- * Registers the deep-link listeners. Must be called once during app startup
- * (e.g. in `main.tsx` or an app-level effect).
- *
- * Also checks `getCurrent()` to handle the case where the app was launched
- * directly by a deep-link click (the URL arrives as a launch-time event that
- * would otherwise be missed by the async listener registration).
- */
 export async function initDeepLinkHandler(): Promise<void> {
   if (initialised) return;
   initialised = true;
