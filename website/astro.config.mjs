@@ -7,6 +7,7 @@ import react from "@astrojs/react";
 // https://astro.build/config
 export default defineConfig({
   output: "server",
+  adapter: cloudflare(),
   integrations: [react()],
 
   vite: {
@@ -15,7 +16,4 @@ export default defineConfig({
       noExternal: ['@lobehub/icons'],
     },
   },
-  adapter: cloudflare({
-    imageService: 'compile',
-  }),
 });
