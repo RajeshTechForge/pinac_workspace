@@ -1,9 +1,8 @@
 // @ts-check
 import { defineConfig } from "astro/config";
+import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from "@tailwindcss/vite";
 import react from "@astrojs/react";
-
-import node from "@astrojs/node";
 
 // https://astro.build/config
 export default defineConfig({
@@ -16,8 +15,7 @@ export default defineConfig({
       noExternal: ['@lobehub/icons'],
     },
   },
-
-  adapter: node({
-    mode: "standalone",
+  adapter: cloudflare({
+    imageService: 'compile',
   }),
 });
