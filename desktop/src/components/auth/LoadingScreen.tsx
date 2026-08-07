@@ -1,11 +1,3 @@
-/**
- * LoadingScreen.tsx — Branded splash shown during the cold-start session check.
- *
- * Appears for the ~200ms while isAuthenticated() reads from secure storage.
- * A static mark (no spinner) is intentional: the check is near-instant and
- * a spinner would cause a distracting flash for returning users.
- */
-
 export default function LoadingScreen() {
   return (
     <div

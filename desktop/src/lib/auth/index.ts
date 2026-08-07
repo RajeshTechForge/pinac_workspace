@@ -1,15 +1,3 @@
-/**
- * index.ts — Public barrel export for the desktop auth library.
- *
- * Import from this file, not from individual modules:
- *   import { startLogin, initDeepLinkHandler, isAuthenticated } from "@/lib/auth";
- *
- * Intentionally NOT re-exported (internal / security-sensitive):
- *   - getPendingFlow, clearPendingFlow  (auth flow internal state)
- *   - generateCodeVerifier              (only used inside authFlow)
- */
-
-// PKCE primitives (exported for unit-testing purposes)
 export { generateCodeChallenge, generateState } from "./pkce";
 
 // Auth flow

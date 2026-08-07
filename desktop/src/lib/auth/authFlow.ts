@@ -10,8 +10,11 @@
  */
 
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { generateCodeVerifier, generateCodeChallenge, generateState } from "./pkce";
-
+import {
+  generateCodeVerifier,
+  generateCodeChallenge,
+  generateState,
+} from "./pkce";
 
 interface PendingFlow {
   readonly codeVerifier: string;
@@ -32,17 +35,19 @@ function pruneExpiredFlows(): void {
 
 // PUBLIC API
 export async function startLogin(): Promise<void> {
-  const websiteBaseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as string | undefined;
+  const websiteBaseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as
+    string | undefined;
   if (!websiteBaseUrl) {
     throw new Error(
-      "[auth] VITE_WEBSITE_BASE_URL is not set. Add it to desktop/.env."
+      "[auth] VITE_WEBSITE_BASE_URL is not set. Add it to desktop/.env.",
     );
   }
 
-  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as string | undefined;
+  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
+    string | undefined;
   if (!nativeClientId) {
     throw new Error(
-      "[auth] VITE_WORKOS_CLIENT_ID is not set. Add it to desktop/.env."
+      "[auth] VITE_WORKOS_CLIENT_ID is not set. Add it to desktop/.env.",
     );
   }
 
@@ -66,14 +71,10 @@ export async function startLogin(): Promise<void> {
   loginUrl.searchParams.set("code_challenge_method", "S256");
   loginUrl.searchParams.set("state", state);
   loginUrl.searchParams.set("client_id", nativeClientId);
-  
+
   await openUrl(loginUrl.toString());
 }
 
-/**
- * Retrieves a pending flow by its state token, or `undefined` if not found
- * or already expired.  Used by deepLinkHandler.ts.
- */
 export function getPendingFlow(state: string): PendingFlow | undefined {
   const flow = pendingFlows.get(state);
   if (!flow) return undefined;
@@ -84,10 +85,6 @@ export function getPendingFlow(state: string): PendingFlow | undefined {
   return flow;
 }
 
-/**
- * Removes a pending flow by its state token.  Must be called by
- * deepLinkHandler.ts immediately after a successful or failed token exchange.
- */
 export function clearPendingFlow(state: string): void {
   pendingFlows.delete(state);
 }

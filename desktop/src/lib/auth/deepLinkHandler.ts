@@ -1,7 +1,3 @@
-/**
- * deepLinkHandler.ts — Receives and processes pinac:// deep-link callbacks.
- */
-
 import { onOpenUrl, getCurrent } from "@tauri-apps/plugin-deep-link";
 import { listen } from "@tauri-apps/api/event";
 import { getPendingFlow, clearPendingFlow } from "./authFlow";
@@ -9,17 +5,21 @@ import { exchangeCodeForTokens } from "./tokenExchange";
 import { saveTokens } from "./secureStorage";
 
 export type DeepLinkAuthError =
-  | { readonly code: "INVALID_URL";    readonly message: string }
+  | { readonly code: "INVALID_URL"; readonly message: string }
   | { readonly code: "MISSING_PARAMS"; readonly message: string }
-  | { readonly code: "NO_PENDING_FLOW";
+  | {
+      readonly code: "NO_PENDING_FLOW";
       readonly message: string;
-      readonly coldStart?: true }
+      readonly coldStart?: true;
+    }
   | { readonly code: "STATE_MISMATCH"; readonly message: string }
-  | { readonly code: "FLOW_EXPIRED";   readonly message: string }
-  | { readonly code: "EXCHANGE_FAILED";
+  | { readonly code: "FLOW_EXPIRED"; readonly message: string }
+  | {
+      readonly code: "EXCHANGE_FAILED";
       readonly message: string;
-      readonly kind: "INVALID_GRANT" | "EXPIRED_CODE" | "NETWORK" | "UNKNOWN" }
-  | { readonly code: "STORAGE_ERROR";  readonly message: string };
+      readonly kind: "INVALID_GRANT" | "EXPIRED_CODE" | "NETWORK" | "UNKNOWN";
+    }
+  | { readonly code: "STORAGE_ERROR"; readonly message: string };
 
 /** Successful auth result surfaced to the UI. */
 export interface AuthSuccessPayload {
@@ -32,10 +32,10 @@ export interface AuthSuccessPayload {
 // ---------------------------------------------------------------------------
 
 type AuthSuccessHandler = (payload: AuthSuccessPayload) => void;
-type AuthErrorHandler   = (error: DeepLinkAuthError)    => void;
+type AuthErrorHandler = (error: DeepLinkAuthError) => void;
 
 const successHandlers: Set<AuthSuccessHandler> = new Set();
-const errorHandlers:   Set<AuthErrorHandler>   = new Set();
+const errorHandlers: Set<AuthErrorHandler> = new Set();
 
 /** Subscribe to successful auth events. Returns an unsubscribe function. */
 export function onAuthSuccess(handler: AuthSuccessHandler): () => void {
@@ -67,7 +67,10 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    emitError({ code: "INVALID_URL", message: `Cannot parse deep-link URL: "${rawUrl}"` });
+    emitError({
+      code: "INVALID_URL",
+      message: `Cannot parse deep-link URL: "${rawUrl}"`,
+    });
     return;
   }
 
@@ -79,8 +82,6 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
     return;
   }
 
-  // Normalise: URL("pinac://auth/callback") sets .hostname = "auth", .pathname = "/callback".
-  // Also accept pinac:///auth/callback (triple-slash variant some OS handlers produce).
   const fullPath = `/${parsed.hostname}${parsed.pathname}`.replace(/\/+/g, "/");
   if (fullPath !== "/auth/callback") {
     emitError({
@@ -91,13 +92,14 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   }
 
   // Step 2: Extract query params.
-  const code  = parsed.searchParams.get("code");
+  const code = parsed.searchParams.get("code");
   const state = parsed.searchParams.get("state");
 
   if (!code || !state) {
     emitError({
       code: "MISSING_PARAMS",
-      message: "Deep-link callback is missing required 'code' or 'state' parameter.",
+      message:
+        "Deep-link callback is missing required 'code' or 'state' parameter.",
     });
     return;
   }
@@ -123,18 +125,24 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   clearPendingFlow(state);
 
   // Step 5: Read the native client ID (same one used in startLogin).
-  const nativeClientId = import.meta.env.VITE_WORKOS_NATIVE_CLIENT_ID as string | undefined;
+  const nativeClientId = import.meta.env.VITE_WORKOS_NATIVE_CLIENT_ID as
+    string | undefined;
   if (!nativeClientId) {
     emitError({
       code: "EXCHANGE_FAILED",
       kind: "UNKNOWN",
-      message: "VITE_WORKOS_NATIVE_CLIENT_ID is not configured in desktop/.env.",
+      message:
+        "VITE_WORKOS_NATIVE_CLIENT_ID is not configured in desktop/.env.",
     });
     return;
   }
 
   // Step 6: Exchange code + verifier for tokens.
-  const result = await exchangeCodeForTokens(code, codeVerifier, nativeClientId);
+  const result = await exchangeCodeForTokens(
+    code,
+    codeVerifier,
+    nativeClientId,
+  );
 
   if (!result.ok) {
     emitError({

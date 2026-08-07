@@ -1,20 +1,3 @@
-/**
- * AuthContext.tsx — Shared auth state for the Pinac desktop app.
- *
- * Owns the full auth lifecycle:
- *  - Cold-start session check (isAuthenticated + getCurrentUser).
- *  - Deep-link success / error events (via the module-level event bus).
- *  - Refresh timer — keeps the access token alive while the app is open.
- *  - Login / logout actions exposed to child components via useAuth().
- *
- * Design notes:
- *  - Subscriptions (onAuthSuccess, onAuthError) are registered at the Provider
- *    level so they fire regardless of which screen is currently rendered.
- *  - The Provider is the only component that calls initDeepLinkHandler().
- *  - Children never call invoke() or auth-lib functions directly — they go
- *    through this context's action dispatchers.
- */
-
 import {
   createContext,
   useCallback,
@@ -37,14 +20,6 @@ import {
   type CurrentUser,
 } from "../lib/auth";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Discriminated union representing every possible auth state.
- * The UI reads `.kind` to decide what to render — no boolean flags.
- */
 export type AuthStatus =
   | { readonly kind: "checking" }
   | { readonly kind: "unauthenticated" }
@@ -63,11 +38,8 @@ type AuthAction =
 /** Value shape exposed to all consumers via useAuth(). */
 export type AuthContextValue = {
   readonly status: AuthStatus;
-  /** Opens the browser to begin the PKCE login flow. */
   readonly login: () => Promise<void>;
-  /** Signs the user out and revokes the WorkOS session server-side. */
   readonly logout: () => Promise<void>;
-  /** Resets an error state back to unauthenticated. */
   readonly dismissError: () => void;
 };
 
@@ -92,27 +64,16 @@ function authReducer(state: AuthStatus, action: AuthAction): AuthStatus {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 
-/**
- * Wraps the entire application. Must be the outermost provider — rendered
- * before ChatProvider so auth state is available everywhere.
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, dispatch] = useReducer(authReducer, { kind: "checking" });
 
   // ── Session check + deep-link listener setup (runs once on mount) ─────────
-  // Registers OS-level deep-link listeners and checks stored session state.
-  // Subscriptions live at the provider level so they fire independently of
-  // which screen the user is currently viewing.
   useEffect(() => {
     let cancelled = false;
 
@@ -138,8 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "SET_ERROR", error });
     });
 
-    // Check whether a valid session already exists in secure storage.
-    // Transitions from "checking" to either "authenticated" or "unauthenticated".
     (async () => {
       try {
         const authed = await isAuthenticated();
@@ -188,7 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: {
           code: "EXCHANGE_FAILED",
           kind: "UNKNOWN",
-          message: err instanceof Error ? err.message : "Failed to open browser for login.",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to open browser for login.",
         },
       });
     }
@@ -218,12 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // Hook
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the current auth context value.
- *
- * @throws {Error} if called outside an AuthProvider — enforces correct usage
- *                 at runtime rather than allowing a silent null value.
- */
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {

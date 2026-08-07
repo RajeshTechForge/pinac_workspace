@@ -1,29 +1,11 @@
-/**
- * AuthScreen.tsx — Sign Up / Sign In entry point.
- *
- * Renders three distinct sub-states sourced from AuthContext:
- *  - unauthenticated: Welcome message + "Sign in with Pinac" CTA.
- *  - waiting: Browser is open. Button disabled, pulsing indicator shown.
- *  - error: Inline alert with human-readable message + Try Again / Cancel.
- *
- * TitleBar is preserved at the top so the window remains draggable and
- * the user can minimize / close the app during the login flow.
- */
-
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import TitleBar from "../layout/TitleBar";
 import Button from "../ui/Button";
 import { useAuth, type AuthStatus } from "../../context/AuthContext";
 import type { DeepLinkAuthError } from "../../lib/auth";
 
-// ---------------------------------------------------------------------------
 // Error message mapping
-// ---------------------------------------------------------------------------
 
-/**
- * Maps a typed DeepLinkAuthError to a human-readable string safe for display.
- * Internal technical details (env-var names, raw messages) are never surfaced.
- */
 function errorMessage(error: DeepLinkAuthError): string {
   switch (error.code) {
     case "INVALID_URL":
@@ -53,11 +35,7 @@ function errorMessage(error: DeepLinkAuthError): string {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Sub-components
-// ---------------------------------------------------------------------------
-
-/** Inline error alert shown when status.kind === "error". */
 function ErrorAlert({ error }: { error: DeepLinkAuthError }) {
   return (
     <div
@@ -94,15 +72,7 @@ function PulsingDot() {
   );
 }
 
-// ---------------------------------------------------------------------------
 // Main component
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves the auth screen's displayed sub-state from the full AuthStatus union.
- * Maps `waiting` and `error` to recognisable UI variants; both render within
- * this screen (AuthGate routes them here via `resolveScreen`).
- */
 type ScreenVariant = "unauthenticated" | "waiting" | "error";
 
 function resolveVariant(status: AuthStatus): ScreenVariant {
@@ -116,7 +86,6 @@ function resolveVariant(status: AuthStatus): ScreenVariant {
   }
 }
 
-/** The root sign-in / sign-up screen. Reads all state from AuthContext. */
 export default function AuthScreen() {
   const { status, login, dismissError } = useAuth();
   const variant = resolveVariant(status);
