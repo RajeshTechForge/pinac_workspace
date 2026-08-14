@@ -1,3 +1,10 @@
+> [!TIP]
+> Pinac Workspace is build on our custom Python library "**Kitkat**: *A modern & minimal Python library for talking to LLMs.*"
+>  
+> Our library is currently under active development. For knowing more, visit [our library's official website](https://kitkat.rajeshmondal.com) and if you want to contribute, visite our repository [**RajeshTechForge/kitkat**](https://github.com/RajeshTechForge/kitkat).
+
+<br />
+
 <div align="center">
 
 <img width="6000" height="2000" alt="Welcome to Pinac-Workspace" src="https://github.com/user-attachments/assets/8072e546-9ffc-4a02-8348-efcec808a86c" />
