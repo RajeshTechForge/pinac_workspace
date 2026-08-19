@@ -1,16 +1,42 @@
 /**
  * POST /api/auth/token — PKCE authorization-code exchange proxy.
  *
- * The desktop app POSTs { code, code_verifier, client_id } here after receiving
+ * The desktop app POSTs { code, code_verifier } here after receiving
  * the authorization code via the pinac:// deep-link callback.  This endpoint
  * calls WorkOS on behalf of the desktop so that the WorkOS API key never leaves
  * the server and the token exchange follows the correct PKCE architecture.
+ *
  */
 
 export const prerender = false;
 
 import type { APIRoute } from "astro";
 import { workos, WORKOS_CLIENT_ID } from "../../../lib/workos";
+
+const TAURI_ORIGINS = new Set([
+  "http://localhost:1420", // Dev mode
+  "tauri://localhost", // macOS/Linux
+  "https://tauri.localhost", // Windows (WebView2)
+]);
+
+function resolveOrigin(request: Request): string | null {
+  const origin = request.headers.get("Origin");
+  return origin !== null && TAURI_ORIGINS.has(origin) ? origin : null;
+}
+
+function corsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "7200",
+    Vary: "Origin",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type TokenRequestBody = {
   code?: unknown;
@@ -21,7 +47,6 @@ type TokenSuccess = {
   ok: true;
   access_token: string;
   refresh_token: string;
-  /** Lifetime of the access token in seconds. */
   expires_in: number;
   user: {
     id: string;
@@ -50,13 +75,12 @@ type TokenResponse = TokenSuccess | TokenError;
 
 const CODE_VERIFIER_RE = /^[A-Za-z0-9\-._~]{43,128}$/;
 
-/** Lifetime (seconds) when WorkOS omits accessTokenExpiresIn. */
 const TOKEN_EXPIRES_IN = 300;
 
-function json(body: TokenResponse, status: number): Response {
+function json(body: TokenResponse, status: number, origin: string): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
   });
 }
 
@@ -64,16 +88,30 @@ function errorResponse(
   status: number,
   code: TokenErrorCode,
   message: string,
+  origin: string,
 ): Response {
-  return json({ ok: false, error: { code, message } }, status);
+  return json({ ok: false, error: { code, message } }, status, origin);
 }
 
 // ---------------------------------------------------------------------------
-// Route handler
+// OPTIONS — CORS preflight handler
+// ---------------------------------------------------------------------------
+
+export const OPTIONS: APIRoute = ({ request }) => {
+  const origin = resolveOrigin(request);
+  if (origin === null) {
+    return new Response(null, { status: 403 });
+  }
+  return new Response(null, { status: 204, headers: corsHeaders(origin) });
+};
+
+// ---------------------------------------------------------------------------
+// POST — token exchange handler
 // ---------------------------------------------------------------------------
 
 export const POST: APIRoute = async ({ request }) => {
-  // ── Parse body ────────────────────────────────────────────────────────────
+  const origin = resolveOrigin(request) ?? "";
+
   let parsed: unknown;
   try {
     parsed = await request.json();
@@ -82,17 +120,23 @@ export const POST: APIRoute = async ({ request }) => {
       400,
       "INVALID_BODY",
       "Request body must be valid JSON.",
+      origin,
     );
   }
 
   const { code, code_verifier } = (parsed ?? {}) as TokenRequestBody;
 
-  // ── Validate code ─────────────────────────────────────────────────────────
+  // Validate code
   if (typeof code !== "string" || code.trim().length === 0) {
-    return errorResponse(400, "INVALID_BODY", "A non-empty code is required.");
+    return errorResponse(
+      400,
+      "INVALID_BODY",
+      "A non-empty code is required.",
+      origin,
+    );
   }
 
-  // ── Validate code_verifier ────────────────────────────────────────────────
+  // Validate code_verifier
   if (
     typeof code_verifier !== "string" ||
     !CODE_VERIFIER_RE.test(code_verifier)
@@ -101,10 +145,11 @@ export const POST: APIRoute = async ({ request }) => {
       400,
       "INVALID_BODY",
       "code_verifier must be 43–128 URL-safe characters [A-Za-z0-9\\-._~] (RFC 7636 §4.1).",
+      origin,
     );
   }
 
-  // ── Exchange code + verifier with WorkOS ──────────────────────────────────
+  // Exchange code + verifier with WorkOS
   try {
     const authRes = await workos.userManagement.authenticateWithCode({
       clientId: WORKOS_CLIENT_ID,
@@ -125,7 +170,7 @@ export const POST: APIRoute = async ({ request }) => {
       },
     };
 
-    return json(body, 200);
+    return json(body, 200, origin);
   } catch (err) {
     const e = err as { code?: string; message?: string };
     const errCode = e.code ?? "";
@@ -143,6 +188,7 @@ export const POST: APIRoute = async ({ request }) => {
         401,
         "INVALID_GRANT",
         "The authorization code is invalid, expired, or the code_verifier does not match.",
+        origin,
       );
     }
 
@@ -151,6 +197,7 @@ export const POST: APIRoute = async ({ request }) => {
         429,
         "RATE_LIMITED",
         "Too many token exchange attempts. Please wait a moment and try again.",
+        origin,
       );
     }
 
@@ -162,6 +209,7 @@ export const POST: APIRoute = async ({ request }) => {
       502,
       "API_ERROR",
       "Token exchange failed. Please try again.",
+      origin,
     );
   }
 };
