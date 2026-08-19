@@ -16,6 +16,8 @@ import {
   generateState,
 } from "./pkce";
 
+const WEBSITE_BASE_URL = "https://pinac.rajeshmondal.com";
+
 interface PendingFlow {
   readonly codeVerifier: string;
   readonly expiresAt: number;
@@ -35,22 +37,6 @@ function pruneExpiredFlows(): void {
 
 // PUBLIC API
 export async function startLogin(): Promise<void> {
-  const websiteBaseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as
-    string | undefined;
-  if (!websiteBaseUrl) {
-    throw new Error(
-      "[auth] VITE_WEBSITE_BASE_URL is not set. Add it to desktop/.env.",
-    );
-  }
-
-  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
-    string | undefined;
-  if (!nativeClientId) {
-    throw new Error(
-      "[auth] VITE_WORKOS_CLIENT_ID is not set. Add it to desktop/.env.",
-    );
-  }
-
   pruneExpiredFlows();
 
   // Generate fresh PKCE params for this attempt.
@@ -66,11 +52,10 @@ export async function startLogin(): Promise<void> {
     expiresAt: Date.now() + FLOW_TTL_MS,
   });
 
-  const loginUrl = new URL(`${websiteBaseUrl}/desktop-login`);
+  const loginUrl = new URL(`${WEBSITE_BASE_URL}/desktop-login`);
   loginUrl.searchParams.set("code_challenge", codeChallenge);
   loginUrl.searchParams.set("code_challenge_method", "S256");
   loginUrl.searchParams.set("state", state);
-  loginUrl.searchParams.set("client_id", nativeClientId);
 
   await openUrl(loginUrl.toString());
 }

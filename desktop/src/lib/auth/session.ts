@@ -118,16 +118,6 @@ export async function silentRefresh(): Promise<RefreshResult> {
     };
   }
 
-  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
-    string | undefined;
-  if (!nativeClientId) {
-    return {
-      ok: false,
-      reason: "UNKNOWN",
-      message: "VITE_WORKOS_CLIENT_ID is not set.",
-    };
-  }
-
   let response: Response;
   try {
     response = await fetch(REFRESH_ENDPOINT, {
@@ -135,7 +125,6 @@ export async function silentRefresh(): Promise<RefreshResult> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         grant_type: "refresh_token",
-        client_id: nativeClientId,
         refresh_token: stored.refreshToken,
         // No client_secret — public client.
       }),

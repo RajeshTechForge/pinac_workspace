@@ -124,24 +124,8 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   const { codeVerifier } = pendingFlow;
   clearPendingFlow(state);
 
-  // Step 5: Read the native client ID (same one used in startLogin).
-  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
-    string | undefined;
-  if (!nativeClientId) {
-    emitError({
-      code: "EXCHANGE_FAILED",
-      kind: "UNKNOWN",
-      message: "VITE_WORKOS_CLIENT_ID is not configured in desktop/.env.",
-    });
-    return;
-  }
-
   // Step 6: Exchange code + verifier for tokens.
-  const result = await exchangeCodeForTokens(
-    code,
-    codeVerifier,
-    nativeClientId,
-  );
+  const result = await exchangeCodeForTokens(code, codeVerifier);
 
   if (!result.ok) {
     emitError({

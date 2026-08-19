@@ -46,7 +46,6 @@ interface ProxyErrorBody {
  *
  * Website error codes (per contract):
  *   INVALID_BODY    — bad request from desktop (config error)
- *   UNKNOWN_CLIENT  — client_id mismatch (config error)
  *   INVALID_GRANT   — code expired/used or verifier mismatch
  *   RATE_LIMITED    — WorkOS rate limit hit
  *   API_ERROR       — upstream WorkOS / network failure
@@ -76,33 +75,13 @@ function classifyError(
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Exchanges an authorization `code` + `codeVerifier` for tokens by calling
- * the website's `POST /api/auth/token` proxy, which forwards the request to
- * WorkOS and returns only the fields the desktop needs.
- *
- * @param code         - The authorization code from the deep-link callback.
- * @param codeVerifier - The RFC 7636 code verifier generated at login start.
- * @param clientId     - The WorkOS client ID (`VITE_WORKOS_CLIENT_ID`), sent
- *                       for lightweight caller identity verification by the proxy.
- */
+const WEBSITE_BASE_URL = "https://pinac.rajeshmondal.com";
+
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
-  clientId: string,
 ): Promise<TokenExchangeResult> {
-  const baseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as string | undefined;
-  if (!baseUrl) {
-    return {
-      ok: false,
-      error: {
-        kind: "UNKNOWN",
-        message: "VITE_WEBSITE_BASE_URL is not configured in desktop/.env.",
-      },
-    };
-  }
-
-  const tokenEndpoint = `${baseUrl}/api/auth/token`;
+  const tokenEndpoint = `${WEBSITE_BASE_URL}/api/auth/token`;
 
   let response: Response;
   try {
@@ -112,7 +91,6 @@ export async function exchangeCodeForTokens(
       body: JSON.stringify({
         code,
         code_verifier: codeVerifier,
-        client_id: clientId,
       }),
     });
   } catch (networkErr) {

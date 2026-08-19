@@ -15,7 +15,6 @@ import { workos, WORKOS_CLIENT_ID } from "../../../lib/workos";
 type TokenRequestBody = {
   code?: unknown;
   code_verifier?: unknown;
-  client_id?: unknown;
 };
 
 type TokenSuccess = {
@@ -86,16 +85,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  const { code, code_verifier, client_id } = (parsed ?? {}) as TokenRequestBody;
-
-  // ── Validate client_id ────────────────────────────────────────────────────
-  if (typeof client_id !== "string" || client_id !== WORKOS_CLIENT_ID) {
-    return errorResponse(
-      400,
-      "UNKNOWN_CLIENT",
-      "The client_id does not match the registered desktop application.",
-    );
-  }
+  const { code, code_verifier } = (parsed ?? {}) as TokenRequestBody;
 
   // ── Validate code ─────────────────────────────────────────────────────────
   if (typeof code !== "string" || code.trim().length === 0) {

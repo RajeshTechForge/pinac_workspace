@@ -54,16 +54,15 @@ export const GET: APIRoute = async ({ url, redirect }) => {
   const codeChallenge = url.searchParams.get("code_challenge");
   const codeChallengeMethod = url.searchParams.get("code_challenge_method");
   const state = url.searchParams.get("state");
-  const clientId = url.searchParams.get("client_id");
 
   // ── Param presence ────────────────────────────────────────────────────────
-  if (!codeChallenge || !codeChallengeMethod || !state || !clientId) {
+  if (!codeChallenge || !codeChallengeMethod || !state) {
     return errorPage(
       400,
       "Missing Parameters",
       "The desktop login link is missing required parameters " +
         "(<code>code_challenge</code>, <code>code_challenge_method</code>, " +
-        "<code>state</code>, <code>client_id</code>). " +
+        "<code>state</code>). " +
         "This link must be opened by the Pinac desktop app, not manually.",
     );
   }
@@ -95,17 +94,6 @@ export const GET: APIRoute = async ({ url, redirect }) => {
       400,
       "Malformed state",
       "The <code>state</code> parameter has an unexpected format.",
-    );
-  }
-
-  // ── client_id must match the registered native client ID ─────────────────
-  // This prevents a malicious page from using this relay route with a
-  // different client ID to phish WorkOS auth flows.
-  if (clientId !== WORKOS_CLIENT_ID) {
-    return errorPage(
-      400,
-      "Unknown Client",
-      "The <code>client_id</code> does not match the registered desktop application.",
     );
   }
 
