@@ -118,13 +118,13 @@ export async function silentRefresh(): Promise<RefreshResult> {
     };
   }
 
-  const nativeClientId = import.meta.env.VITE_WORKOS_NATIVE_CLIENT_ID as
+  const nativeClientId = import.meta.env.VITE_WORKOS_CLIENT_ID as
     string | undefined;
   if (!nativeClientId) {
     return {
       ok: false,
       reason: "UNKNOWN",
-      message: "VITE_WORKOS_NATIVE_CLIENT_ID is not set.",
+      message: "VITE_WORKOS_CLIENT_ID is not set.",
     };
   }
 
