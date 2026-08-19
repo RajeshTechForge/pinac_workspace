@@ -23,10 +23,7 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   }; Max-Age=0`;
 
   if (!code || !state || !storedState || state !== storedState) {
-    const res = redirect(
-      `${SIGNIN_ROUTE}?error=STATE_MISMATCH`,
-      302
-    );
+    const res = redirect(`${SIGNIN_ROUTE}?error=STATE_MISMATCH`, 302);
     res.headers.append("Set-Cookie", clearStateCookie);
     return res;
   }
@@ -46,15 +43,12 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
       "Set-Cookie",
       `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
         baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`
+      }; Max-Age=40000000`,
     );
     res.headers.append("Set-Cookie", clearStateCookie);
     return res;
   } catch (err) {
-    const res = redirect(
-      `${SIGNIN_ROUTE}?error=OAUTH_FAILED`,
-      302
-    );
+    const res = redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
     res.headers.append("Set-Cookie", clearStateCookie);
     return res;
   }

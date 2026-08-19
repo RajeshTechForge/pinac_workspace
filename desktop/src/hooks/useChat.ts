@@ -82,7 +82,12 @@ export function useChat() {
         pinned: false,
       };
 
-      pendingPairRef.current = { userMsg, assistantMsgId, convMeta, isFirstPair };
+      pendingPairRef.current = {
+        userMsg,
+        assistantMsgId,
+        convMeta,
+        isFirstPair,
+      };
 
       // ── 3. Start streaming ────────────────────────────────────────────────
       let streamBuffer = "";
@@ -210,11 +215,13 @@ export function useChat() {
           });
         }
 
-        void savePair(updatedMeta, pending.userMsg, finalisedAssistantMsg).catch(
-          (err: unknown) => {
-            console.error("Failed to persist conversation pair:", err);
-          },
-        );
+        void savePair(
+          updatedMeta,
+          pending.userMsg,
+          finalisedAssistantMsg,
+        ).catch((err: unknown) => {
+          console.error("Failed to persist conversation pair:", err);
+        });
       }
     },
     [

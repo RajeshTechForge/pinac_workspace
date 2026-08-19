@@ -30,7 +30,9 @@ export default function MessageList({
     const handleScroll = (e: Event) => {
       const target = e.currentTarget as HTMLElement;
       const threshold = 60;
-      const atBottom = target.scrollHeight - target.scrollTop - target.clientHeight < threshold;
+      const atBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight <
+        threshold;
       userScrolledRef.current = !atBottom;
     };
 
@@ -45,14 +47,23 @@ export default function MessageList({
   }, [messages, streamingText, streamingThinkingText]);
 
   return (
-    <ScrollArea ref={scrollRef} className="flex-1 min-h-0" role="log" aria-label="Message list">
+    <ScrollArea
+      ref={scrollRef}
+      className="flex-1 min-h-0"
+      role="log"
+      aria-label="Message list"
+    >
       {messages.map((msg) => (
         <MessageBubble
           key={msg.id}
           message={msg}
           isStreaming={isStreaming && streamingMessageId === msg.id}
-          streamingText={streamingMessageId === msg.id ? streamingText : undefined}
-          streamingThinkingText={streamingMessageId === msg.id ? streamingThinkingText : undefined}
+          streamingText={
+            streamingMessageId === msg.id ? streamingText : undefined
+          }
+          streamingThinkingText={
+            streamingMessageId === msg.id ? streamingThinkingText : undefined
+          }
         />
       ))}
       {isStreaming && !streamingMessageId && <StreamingIndicator />}

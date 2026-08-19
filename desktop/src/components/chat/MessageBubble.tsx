@@ -20,7 +20,13 @@ function renderContent(text: string) {
     const codeMatch = part.match(/```(\w*)\n([\s\S]*?)```/);
     if (codeMatch) {
       const [, lang, code] = codeMatch;
-      blocks.push(<CodeBlock key={idx++} code={code.trim()} language={lang || undefined} />);
+      blocks.push(
+        <CodeBlock
+          key={idx++}
+          code={code.trim()}
+          language={lang || undefined}
+        />,
+      );
     } else if (part.trim()) {
       const lines = part.split("\n");
       blocks.push(
@@ -47,12 +53,13 @@ export default function MessageBubble({
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
-  const displayContent = isStreaming ? streamingText ?? "" : message.content;
+  const displayContent = isStreaming ? (streamingText ?? "") : message.content;
   const displayThinking = isStreaming
-    ? streamingThinkingText ?? ""
-    : message.thinkingContent ?? "";
+    ? (streamingThinkingText ?? "")
+    : (message.thinkingContent ?? "");
 
-  const isThinkingPhase = isStreaming && !!streamingThinkingText && !streamingText;
+  const isThinkingPhase =
+    isStreaming && !!streamingThinkingText && !streamingText;
 
   return (
     <div
@@ -80,10 +87,11 @@ export default function MessageBubble({
             />
           )}
           <div className="text-text-primary">
-            {isUser
-              ? renderContent(displayContent)
-              : <MarkdownContent content={displayContent} />
-            }
+            {isUser ? (
+              renderContent(displayContent)
+            ) : (
+              <MarkdownContent content={displayContent} />
+            )}
             {isStreaming && (
               <span className="inline-block w-0.5 h-4 ml-0.5 bg-accent animate-pulse align-text-bottom" />
             )}

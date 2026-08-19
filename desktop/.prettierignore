@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+src-tauri
+AGENTS.md
+DESIGN.md
+README.md

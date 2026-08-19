@@ -12,7 +12,7 @@ if (!clientId) {
 }
 if (!cookiePassword || cookiePassword.length < 32) {
   throw new Error(
-    "Missing or too-short env var COOKIE_PASSWORD (must be >= 32 chars)"
+    "Missing or too-short env var COOKIE_PASSWORD (must be >= 32 chars)",
   );
 }
 
@@ -46,8 +46,8 @@ export const ALLOWED_OAUTH_PROVIDERS = ["google", "github"] as const;
 export type AllowedProvider = (typeof ALLOWED_OAUTH_PROVIDERS)[number];
 
 export function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTE_PREFIXES.some((prefix) =>
-    pathname === prefix || pathname.startsWith(`${prefix}/`)
+  return PROTECTED_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 

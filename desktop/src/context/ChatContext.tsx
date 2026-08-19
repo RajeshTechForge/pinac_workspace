@@ -221,9 +221,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         const curProvider = action.payload.providers.find(
           (p) => p.value === provider,
         );
-        const curModel = curProvider?.models.find(
-          (m) => m.id === defaultModel,
-        );
+        const curModel = curProvider?.models.find((m) => m.id === defaultModel);
         if (curModel?.thinking) {
           thinkingEffort = curModel.thinking.defaultEffort;
         }

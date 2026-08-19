@@ -92,10 +92,9 @@ export default function LLMTab() {
         providerChanged || state.settings.thinkingEffort === ""
           ? (newThinkingConfig?.defaultEffort ?? "")
           : state.settings.thinkingEffort;
-      const newThinkingEnabled =
-        providerChanged
-          ? false
-          : state.settings.thinkingEnabled && newThinkingConfig !== undefined;
+      const newThinkingEnabled = providerChanged
+        ? false
+        : state.settings.thinkingEnabled && newThinkingConfig !== undefined;
 
       saveLlmSettings({
         provider,

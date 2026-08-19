@@ -26,7 +26,10 @@ export function useResizablePanel() {
     function onMouseMove(e: MouseEvent) {
       if (!dragRef.current) return;
       const delta = e.clientX - dragRef.current.startX;
-      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragRef.current.startWidth + delta));
+      const newWidth = Math.min(
+        MAX_WIDTH,
+        Math.max(MIN_WIDTH, dragRef.current.startWidth + delta),
+      );
       dispatch({ type: "SET_SIDEBAR_WIDTH", payload: newWidth });
     }
 

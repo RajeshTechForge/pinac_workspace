@@ -131,8 +131,7 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
     emitError({
       code: "EXCHANGE_FAILED",
       kind: "UNKNOWN",
-      message:
-        "VITE_WORKOS_CLIENT_ID is not configured in desktop/.env.",
+      message: "VITE_WORKOS_CLIENT_ID is not configured in desktop/.env.",
     });
     return;
   }

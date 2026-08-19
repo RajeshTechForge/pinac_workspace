@@ -3,9 +3,9 @@ import type { PaletteCommand } from "../../types";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   "new-chat": <Plus size={14} />,
-  "clear": <Trash2 size={14} />,
-  "export": <Download size={14} />,
-  "settings": <Settings size={14} />,
+  clear: <Trash2 size={14} />,
+  export: <Download size={14} />,
+  settings: <Settings size={14} />,
 };
 
 interface CommandItemProps {
@@ -34,7 +34,9 @@ export default function CommandItem({
       <span className="w-5 h-5 flex items-center justify-center shrink-0">
         {ICON_MAP[command.icon ?? ""] ?? <FileText size={14} />}
       </span>
-      <span className="text-[13px] font-ui flex-1 truncate">{command.label}</span>
+      <span className="text-[13px] font-ui flex-1 truncate">
+        {command.label}
+      </span>
       {command.shortcut && (
         <kbd className="text-[10px] font-mono text-text-muted bg-surface-2 px-1.5 py-0.5 rounded-xs border border-border shrink-0">
           {command.shortcut}

@@ -22,7 +22,12 @@ const GROUP_LABELS: Record<ConversationGroup, string> = {
   older: "Older",
 };
 
-const GROUP_ORDER: ConversationGroup[] = ["today", "yesterday", "this-week", "older"];
+const GROUP_ORDER: ConversationGroup[] = [
+  "today",
+  "yesterday",
+  "this-week",
+  "older",
+];
 
 export default function ConversationList() {
   const { state, dispatch } = useChatContext();

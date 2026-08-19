@@ -39,7 +39,7 @@ export const GET: APIRoute = async ({ params, redirect }) => {
         ok: false,
         error: { code: "INVALID_PROVIDER", message: "Unsupported provider." },
       } satisfies { ok: false; error: ApiError }),
-      { status: 400, headers: { "content-type": "application/json" } }
+      { status: 400, headers: { "content-type": "application/json" } },
     );
   }
 
@@ -65,7 +65,7 @@ export const GET: APIRoute = async ({ params, redirect }) => {
           message: "Could not start OAuth flow.",
         },
       } satisfies { ok: false; error: ApiError }),
-      { status: 502, headers: { "content-type": "application/json" } }
+      { status: 502, headers: { "content-type": "application/json" } },
     );
   }
 
@@ -75,7 +75,7 @@ export const GET: APIRoute = async ({ params, redirect }) => {
     "Set-Cookie",
     `${OAUTH_STATE_COOKIE}=${state}; Path=/; HttpOnly; SameSite=Lax${
       opts.secure ? "; Secure" : ""
-    }; Max-Age=600`
+    }; Max-Age=600`,
   );
   return res;
 };

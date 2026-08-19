@@ -79,7 +79,6 @@ export async function listConversations(): Promise<ConversationMeta[]> {
   return rows.map(rowToMeta);
 }
 
-
 export async function getMessages(convId: string): Promise<Message[]> {
   const rows = await invoke<MessageRow[]>("db_get_messages", { convId });
   return rows.map(rowToMessage);

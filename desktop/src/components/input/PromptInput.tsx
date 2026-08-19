@@ -55,7 +55,7 @@ export default function PromptInput({
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={handleKeyDown}
       disabled={disabled}
-      placeholder={placeholder ?? 'Ask anything  \u2318\u21B5 to send'}
+      placeholder={placeholder ?? "Ask anything  \u2318\u21B5 to send"}
       rows={1}
       className="w-full bg-transparent text-[14px] font-mono text-text-primary placeholder:text-text-muted resize-none focus:outline-none py-2 px-0 leading-5 max-h-40"
     />

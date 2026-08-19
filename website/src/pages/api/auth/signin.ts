@@ -29,13 +29,17 @@ interface ApiError {
 
 interface SigninSuccess {
   ok: true;
-  user: { id: string; email: string; firstName: string | null; lastName: string | null };
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
   redirectTo: string;
 }
 
 type SigninResponse =
-  | SigninSuccess
-  | { ok: false; error: ApiError; redirectTo?: string };
+  SigninSuccess | { ok: false; error: ApiError; redirectTo?: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -56,7 +60,7 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_BODY", message: "Invalid JSON body." },
       },
-      400
+      400,
     );
   }
 
@@ -68,7 +72,7 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_BODY", message: "A valid email is required." },
       },
-      400
+      400,
     );
   }
   if (typeof password !== "string" || password.length === 0) {
@@ -77,7 +81,7 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_BODY", message: "Password is required." },
       },
-      400
+      400,
     );
   }
 
@@ -98,14 +102,14 @@ export const POST: APIRoute = async ({ request }) => {
         user: toSafeUser(authRes.user),
         redirectTo: "/dashboard",
       },
-      200
+      200,
     );
 
     res.headers.append(
       "Set-Cookie",
       `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
         baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`
+      }; Max-Age=40000000`,
     );
     return res;
   } catch (err) {
@@ -118,22 +122,19 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (code === "email_verification_required") {
       const pat = e.pendingAuthenticationToken ?? "";
-      const encodedEmail = encodeURIComponent(
-        email.trim().toLowerCase(),
-      );
+      const encodedEmail = encodeURIComponent(email.trim().toLowerCase());
       return json(
         {
           ok: false,
           error: {
             code: "EMAIL_NOT_VERIFIED",
-            message:
-              "Please verify your email address before signing in.",
+            message: "Please verify your email address before signing in.",
             pendingAuthenticationToken: pat,
             email: email.trim().toLowerCase(),
           },
           redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodeURIComponent(pat)}`,
         },
-        403
+        403,
       );
     }
     if (
@@ -149,7 +150,7 @@ export const POST: APIRoute = async ({ request }) => {
             message: "Incorrect email or password.",
           },
         },
-        401
+        401,
       );
     }
     if (code === "rate_limit_exceeded" || /rate limit/i.test(e.message ?? "")) {
@@ -158,11 +159,10 @@ export const POST: APIRoute = async ({ request }) => {
           ok: false,
           error: {
             code: "RATE_LIMITED",
-            message:
-              "Too many attempts. Please wait a moment and try again.",
+            message: "Too many attempts. Please wait a moment and try again.",
           },
         },
-        429
+        429,
       );
     }
 
@@ -174,7 +174,7 @@ export const POST: APIRoute = async ({ request }) => {
           message: "Sign-in failed. Please try again.",
         },
       },
-      502
+      502,
     );
   }
 };

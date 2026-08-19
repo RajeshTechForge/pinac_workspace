@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Pin, PinOff, Trash2 } from "lucide-react";
-import type {
-  ChangeEvent,
-  FocusEvent,
-  KeyboardEvent,
-  MouseEvent,
-} from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import { useChatContext } from "../../context/ChatContext";
 import {
   deleteConversation,
@@ -144,9 +139,7 @@ export default function ConversationItem({
   /**
    * Provides keyboard shortcuts for committing or canceling edits.
    */
-  function handleRenameKeyDown(
-    e: KeyboardEvent<HTMLInputElement>,
-  ): void {
+  function handleRenameKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === "Enter") {
       e.preventDefault();
       commitRename();

@@ -9,7 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "format": "prettier --write \".\""
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -28,6 +29,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4.3.1",
     "wrangler": "^4.120.0"
   }

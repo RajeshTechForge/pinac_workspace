@@ -51,10 +51,10 @@ const STATE_RE = /^[A-Za-z0-9\-._~+/]{40,128}$/;
 // ---------------------------------------------------------------------------
 
 export const GET: APIRoute = async ({ url, redirect }) => {
-  const codeChallenge       = url.searchParams.get("code_challenge");
+  const codeChallenge = url.searchParams.get("code_challenge");
   const codeChallengeMethod = url.searchParams.get("code_challenge_method");
-  const state               = url.searchParams.get("state");
-  const clientId            = url.searchParams.get("client_id");
+  const state = url.searchParams.get("state");
+  const clientId = url.searchParams.get("client_id");
 
   // ── Param presence ────────────────────────────────────────────────────────
   if (!codeChallenge || !codeChallengeMethod || !state || !clientId) {
@@ -62,9 +62,9 @@ export const GET: APIRoute = async ({ url, redirect }) => {
       400,
       "Missing Parameters",
       "The desktop login link is missing required parameters " +
-      "(<code>code_challenge</code>, <code>code_challenge_method</code>, " +
-      "<code>state</code>, <code>client_id</code>). " +
-      "This link must be opened by the Pinac desktop app, not manually."
+        "(<code>code_challenge</code>, <code>code_challenge_method</code>, " +
+        "<code>state</code>, <code>client_id</code>). " +
+        "This link must be opened by the Pinac desktop app, not manually.",
     );
   }
 
@@ -75,7 +75,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
       400,
       "Unsupported Challenge Method",
       `<code>code_challenge_method</code> must be <code>S256</code>. ` +
-      `Received: <code>${codeChallengeMethod}</code>.`
+        `Received: <code>${codeChallengeMethod}</code>.`,
     );
   }
 
@@ -85,7 +85,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
       400,
       "Malformed code_challenge",
       "The <code>code_challenge</code> parameter has an unexpected format. " +
-      "It must be a BASE64URL-encoded SHA-256 hash (43–128 URL-safe characters)."
+        "It must be a BASE64URL-encoded SHA-256 hash (43–128 URL-safe characters).",
     );
   }
 
@@ -94,7 +94,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     return errorPage(
       400,
       "Malformed state",
-      "The <code>state</code> parameter has an unexpected format."
+      "The <code>state</code> parameter has an unexpected format.",
     );
   }
 
@@ -105,7 +105,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     return errorPage(
       400,
       "Unknown Client",
-      "The <code>client_id</code> does not match the registered desktop application."
+      "The <code>client_id</code> does not match the registered desktop application.",
     );
   }
 
@@ -117,8 +117,8 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     // does not need to (and must not) regenerate them.
     // Ref: WorkOS Node SDK docs — getAuthorizationUrl options (July 2025).
     authUrl = workos.userManagement.getAuthorizationUrl({
-      clientId:            WORKOS_CLIENT_ID,
-      redirectUri:         DESKTOP_CALLBACK_URI,
+      clientId: WORKOS_CLIENT_ID,
+      redirectUri: DESKTOP_CALLBACK_URI,
       state,
       // PKCE params forwarded verbatim from the desktop app:
       codeChallenge,
@@ -136,7 +136,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     return errorPage(
       502,
       "Authorization Error",
-      "Could not start the sign-in process. Please try again in a moment."
+      "Could not start the sign-in process. Please try again in a moment.",
     );
   }
 

@@ -26,14 +26,20 @@ export default function Tooltip({ label, shortcut, children }: TooltipProps) {
   }
 
   return (
-    <div className="relative inline-flex" onMouseEnter={show} onMouseLeave={hide}>
+    <div
+      className="relative inline-flex"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+    >
       {children}
       {visible && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none">
           <div className="bg-surface-3 border border-border text-text-secondary text-[11px] font-mono px-2 py-1 rounded-sm whitespace-nowrap flex items-center gap-1.5">
             <span>{label}</span>
             {shortcut && (
-              <span className="text-text-muted bg-surface-2 px-1 rounded-xs">{shortcut}</span>
+              <span className="text-text-muted bg-surface-2 px-1 rounded-xs">
+                {shortcut}
+              </span>
             )}
           </div>
         </div>

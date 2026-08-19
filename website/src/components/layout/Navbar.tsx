@@ -117,9 +117,10 @@ function ProfileDropdown({ user, onClose }: ProfileDropdownProps) {
     onClose();
     try {
       const res = await fetch("/api/auth/signout", { method: "POST" });
-      const data = (await res.json().catch(() => null)) as
-        | { ok: boolean; redirectTo: string }
-        | null;
+      const data = (await res.json().catch(() => null)) as {
+        ok: boolean;
+        redirectTo: string;
+      } | null;
       window.location.href = data?.redirectTo ?? "/";
     } catch {
       window.location.href = "/";
@@ -221,9 +222,10 @@ export function Navbar({ currentPath, githubStars, user = null }: NavbarProps) {
     closeMenu();
     try {
       const res = await fetch("/api/auth/signout", { method: "POST" });
-      const data = (await res.json().catch(() => null)) as
-        | { ok: boolean; redirectTo: string }
-        | null;
+      const data = (await res.json().catch(() => null)) as {
+        ok: boolean;
+        redirectTo: string;
+      } | null;
       window.location.href = data?.redirectTo ?? "/";
     } catch {
       window.location.href = "/";

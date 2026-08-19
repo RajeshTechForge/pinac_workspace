@@ -26,9 +26,7 @@ export default function SidebarFooter() {
   // AuthGate ensures SidebarFooter is never rendered while unauthenticated,
   // but we guard defensively to satisfy TypeScript and avoid a runtime throw.
   const user = status.kind === "authenticated" ? status.user : null;
-  const displayName = user
-    ? (user.firstName ?? user.email)
-    : "User";
+  const displayName = user ? (user.firstName ?? user.email) : "User";
   const initial = displayName.charAt(0).toUpperCase();
 
   return (

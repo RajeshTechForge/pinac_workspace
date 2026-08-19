@@ -13,7 +13,12 @@ interface SelectProps {
   className?: string;
 }
 
-export default function Select({ value, options, onChange, className = "" }: SelectProps) {
+export default function Select({
+  value,
+  options,
+  onChange,
+  className = "",
+}: SelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -45,7 +50,10 @@ export default function Select({ value, options, onChange, className = "" }: Sel
         className="w-full bg-surface-2 border border-border rounded-sm px-3 py-1.5 text-sm text-text-primary font-ui flex items-center justify-between gap-2 outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-colors duration-100 cursor-pointer"
       >
         <span>{selected?.label ?? value}</span>
-        <ChevronDown size={12} className={`text-text-muted transition-transform duration-100 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={12}
+          className={`text-text-muted transition-transform duration-100 ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (

@@ -43,7 +43,10 @@ export default function CommandPalette() {
             dispatch({ type: "CLEAR_CONVERSATION", payload: convId });
             // Clear message rows from SQLite so they don't reload on next session.
             void clearMessages(convId).catch((err: unknown) => {
-              console.error(`Failed to clear messages for conversation ${convId}:`, err);
+              console.error(
+                `Failed to clear messages for conversation ${convId}:`,
+                err,
+              );
             });
           }
           dispatch({ type: "TOGGLE_COMMAND_PALETTE" });

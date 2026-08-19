@@ -29,17 +29,20 @@ export const POST: APIRoute = async ({ cookies }) => {
 
       const opts = baseCookieOptions();
       const res = new Response(
-        JSON.stringify({ ok: true, redirectTo: logOutUrl } satisfies SignoutResponse),
+        JSON.stringify({
+          ok: true,
+          redirectTo: logOutUrl,
+        } satisfies SignoutResponse),
         {
           status: 200,
           headers: { "content-type": "application/json" },
-        }
+        },
       );
       res.headers.append(
         "Set-Cookie",
         `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${
           opts.secure ? "; Secure" : ""
-        }; Max-Age=0`
+        }; Max-Age=0`,
       );
       return res;
     } catch {
@@ -49,17 +52,20 @@ export const POST: APIRoute = async ({ cookies }) => {
 
   const opts = baseCookieOptions();
   const res = new Response(
-    JSON.stringify({ ok: true, redirectTo: SIGNIN_ROUTE } satisfies SignoutResponse),
+    JSON.stringify({
+      ok: true,
+      redirectTo: SIGNIN_ROUTE,
+    } satisfies SignoutResponse),
     {
       status: 200,
       headers: { "content-type": "application/json" },
-    }
+    },
   );
   res.headers.append(
     "Set-Cookie",
     `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${
       opts.secure ? "; Secure" : ""
-    }; Max-Age=0`
+    }; Max-Age=0`,
   );
   return res;
 };

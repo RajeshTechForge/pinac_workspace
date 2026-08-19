@@ -122,7 +122,7 @@ function errorPage(status: number, title: string, detail: string): Response {
 // ---------------------------------------------------------------------------
 
 export const GET: APIRoute = ({ url }) => {
-  const code  = url.searchParams.get("code");
+  const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
   // WorkOS can also send `error` and `error_description` on failure.
@@ -131,13 +131,13 @@ export const GET: APIRoute = ({ url }) => {
 
   if (oauthError) {
     console.error(
-      `[desktop-callback] WorkOS returned an error: ${oauthError} — ${oauthErrorDesc ?? ""}`
+      `[desktop-callback] WorkOS returned an error: ${oauthError} — ${oauthErrorDesc ?? ""}`,
     );
     return errorPage(
       400,
       "Authentication Failed",
       `WorkOS reported an error: <strong>${oauthError}</strong>. ` +
-      (oauthErrorDesc ? `Details: ${oauthErrorDesc}.` : "")
+        (oauthErrorDesc ? `Details: ${oauthErrorDesc}.` : ""),
     );
   }
 
@@ -146,7 +146,7 @@ export const GET: APIRoute = ({ url }) => {
       400,
       "Missing Parameters",
       "The callback URL is missing the required <code>code</code> or <code>state</code> " +
-      "parameter. This may indicate a misconfigured redirect URI in the WorkOS dashboard."
+        "parameter. This may indicate a misconfigured redirect URI in the WorkOS dashboard.",
     );
   }
 
@@ -166,7 +166,7 @@ export const GET: APIRoute = ({ url }) => {
       // Belt-and-suspenders: also attempt the redirect at the HTTP layer.
       // Some browsers honour this; others (Firefox) require user gesture for
       // custom-scheme navigation — the JS fallback handles those.
-      "Location": deepLinkUrl,
+      Location: deepLinkUrl,
     },
   });
 };

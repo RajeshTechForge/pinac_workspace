@@ -51,12 +51,12 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_BODY", message: "Invalid JSON body." },
       },
-      400
+      400,
     );
   }
 
-  const { code, pendingAuthenticationToken } =
-    (parsed ?? {}) as VerifyRequestBody;
+  const { code, pendingAuthenticationToken } = (parsed ??
+    {}) as VerifyRequestBody;
 
   if (
     typeof pendingAuthenticationToken !== "string" ||
@@ -71,7 +71,7 @@ export const POST: APIRoute = async ({ request }) => {
             "Missing authentication token. Please sign in again to restart verification.",
         },
       },
-      400
+      400,
     );
   }
 
@@ -84,7 +84,7 @@ export const POST: APIRoute = async ({ request }) => {
           message: "Verification code is required.",
         },
       },
-      400
+      400,
     );
   }
 
@@ -106,14 +106,14 @@ export const POST: APIRoute = async ({ request }) => {
         user: toSafeUser(authRes.user),
         redirectTo: POST_LOGIN_ROUTE,
       },
-      200
+      200,
     );
 
     res.headers.append(
       "Set-Cookie",
       `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
         baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`
+      }; Max-Age=40000000`,
     );
     return res;
   } catch (err) {
@@ -131,7 +131,7 @@ export const POST: APIRoute = async ({ request }) => {
               "The verification code is incorrect. Please check and try again.",
           },
         },
-        400
+        400,
       );
     }
 
@@ -145,7 +145,7 @@ export const POST: APIRoute = async ({ request }) => {
               "The verification code has expired. Please sign in again to receive a new code.",
           },
         },
-        410
+        410,
       );
     }
 
@@ -157,7 +157,7 @@ export const POST: APIRoute = async ({ request }) => {
           message: "Verification failed. Please try again.",
         },
       },
-      502
+      502,
     );
   }
 };

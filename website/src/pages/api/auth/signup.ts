@@ -52,12 +52,12 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_BODY", message: "Invalid JSON body." },
       },
-      400
+      400,
     );
   }
 
-  const { email, password, firstName, lastName } =
-    (parsed ?? {}) as SignupRequestBody;
+  const { email, password, firstName, lastName } = (parsed ??
+    {}) as SignupRequestBody;
 
   if (typeof email !== "string" || !EMAIL_RE.test(email.trim())) {
     return json(
@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
         ok: false,
         error: { code: "INVALID_EMAIL", message: "A valid email is required." },
       },
-      400
+      400,
     );
   }
 
@@ -78,7 +78,7 @@ export const POST: APIRoute = async ({ request }) => {
           message: "Password must be at least 8 characters.",
         },
       },
-      400
+      400,
     );
   }
 
@@ -117,7 +117,7 @@ export const POST: APIRoute = async ({ request }) => {
           redirectTo: "/auth/sign-in?created=1",
           pendingVerification: true,
         },
-        201
+        201,
       );
     } catch (authErr) {
       const aErr = authErr as {
@@ -137,7 +137,7 @@ export const POST: APIRoute = async ({ request }) => {
               redirectTo: "/auth/sign-in?created=1",
               pendingVerification: true,
             },
-            201
+            201,
           );
         }
         const encodedEmail = encodeURIComponent(normalizedEmail);
@@ -149,7 +149,7 @@ export const POST: APIRoute = async ({ request }) => {
             redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodedToken}`,
             pendingVerification: true,
           },
-          201
+          201,
         );
       }
 
@@ -162,7 +162,7 @@ export const POST: APIRoute = async ({ request }) => {
           redirectTo: "/auth/sign-in?created=1",
           pendingVerification: true,
         },
-        201
+        201,
       );
     }
   } catch (err) {
@@ -179,10 +179,13 @@ export const POST: APIRoute = async ({ request }) => {
             message: "An account with this email already exists.",
           },
         },
-        409
+        409,
       );
     }
-    if (e.code === "password_strength_validation_failed" || /password/i.test(msg)) {
+    if (
+      e.code === "password_strength_validation_failed" ||
+      /password/i.test(msg)
+    ) {
       return json(
         {
           ok: false,
@@ -192,7 +195,7 @@ export const POST: APIRoute = async ({ request }) => {
               "Password is too weak. Use a longer, more complex password.",
           },
         },
-        400
+        400,
       );
     }
     if (e.code === "email_validation_failed" || /email/i.test(msg)) {
@@ -204,7 +207,7 @@ export const POST: APIRoute = async ({ request }) => {
             message: "WorkOS rejected this email address.",
           },
         },
-        400
+        400,
       );
     }
 
@@ -217,7 +220,7 @@ export const POST: APIRoute = async ({ request }) => {
           message: "Sign-up failed. Please try again.",
         },
       },
-      502
+      502,
     );
   }
 };

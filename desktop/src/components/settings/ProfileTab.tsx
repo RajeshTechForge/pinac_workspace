@@ -13,12 +13,16 @@ export default function ProfileTab() {
     });
   }
 
-  const hasChanges = displayName !== state.settings.displayName || email !== state.settings.email;
+  const hasChanges =
+    displayName !== state.settings.displayName ||
+    email !== state.settings.email;
 
   return (
     <div className="max-w-md space-y-5">
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">Display Name</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          Display Name
+        </label>
         <input
           type="text"
           value={displayName}
@@ -29,7 +33,9 @@ export default function ProfileTab() {
       </div>
 
       <div>
-        <label className="block text-xs font-ui text-text-secondary mb-1.5">Email</label>
+        <label className="block text-xs font-ui text-text-secondary mb-1.5">
+          Email
+        </label>
         <input
           type="email"
           value={email}

@@ -56,7 +56,7 @@ export function EmailVerificationForm() {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ): void => {
     if (e.key === "Backspace" && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
@@ -92,7 +92,7 @@ export function EmailVerificationForm() {
 
     if (!token) {
       setError(
-        "Missing authentication token. Please sign in again to restart verification."
+        "Missing authentication token. Please sign in again to restart verification.",
       );
       return;
     }
@@ -231,11 +231,7 @@ export function EmailVerificationForm() {
             submitting || success || digits.join("").length !== CODE_LENGTH
           }
         >
-          {submitting
-            ? "Verifying…"
-            : success
-              ? "Verified ✓"
-              : "Verify email"}
+          {submitting ? "Verifying…" : success ? "Verified ✓" : "Verify email"}
         </Button>
       </form>
 

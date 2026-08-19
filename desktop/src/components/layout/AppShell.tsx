@@ -61,19 +61,38 @@ function AppShellInner() {
     });
   }, [state.sidebarMode, dispatch]);
 
-  const gridFirstCol = state.sidebarMode === "icon" ? 48 : state.sidebarMode === "hidden" ? 0 : state.sidebarWidth;
+  const gridFirstCol =
+    state.sidebarMode === "icon"
+      ? 48
+      : state.sidebarMode === "hidden"
+        ? 0
+        : state.sidebarWidth;
 
   return (
     <div className="h-dvh w-full flex flex-col overflow-hidden">
       <TitleBar />
-      <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: `${gridFirstCol}px 4px 1fr`, gridTemplateRows: 'minmax(0, 1fr)' }}>
+      <div
+        className="flex-1 min-h-0 grid"
+        style={{
+          gridTemplateColumns: `${gridFirstCol}px 4px 1fr`,
+          gridTemplateRows: "minmax(0, 1fr)",
+        }}
+      >
         {state.sidebarMode === "hidden" && (
           <button
             aria-label="Toggle sidebar"
             onClick={toggleSidebar}
             className="fixed top-11 left-2 z-40 p-1.5 bg-surface-2 border border-border rounded-sm text-text-secondary hover:text-text-primary transition-colors duration-100"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
               <line x1="3" y1="3" x2="13" y2="3" />
               <line x1="3" y1="8" x2="13" y2="8" />
               <line x1="3" y1="13" x2="13" y2="13" />
@@ -83,7 +102,12 @@ function AppShellInner() {
         {state.sidebarMode !== "hidden" && (
           <Sidebar width={sidebarWidth} mode={state.sidebarMode} />
         )}
-        <div style={{ gridColumn: state.sidebarMode === "hidden" ? "1 / -1" : "3" }} className="flex flex-col h-full min-w-0">
+        <div
+          style={{
+            gridColumn: state.sidebarMode === "hidden" ? "1 / -1" : "3",
+          }}
+          className="flex flex-col h-full min-w-0"
+        >
           {state.settingsOpen ? (
             <div className="flex-1 flex flex-col min-h-0">
               <SettingsPanel />

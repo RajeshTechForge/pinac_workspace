@@ -42,7 +42,9 @@ export function useKeyboardShortcuts() {
       if (isMeta && e.key === "f") {
         if (state.sidebarMode !== "hidden") {
           e.preventDefault();
-          const input = document.querySelector<HTMLInputElement>('[data-sidebar-search]');
+          const input = document.querySelector<HTMLInputElement>(
+            "[data-sidebar-search]",
+          );
           input?.focus();
         }
         return;
@@ -51,5 +53,10 @@ export function useKeyboardShortcuts() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [state.commandPaletteOpen, state.settingsOpen, state.sidebarMode, dispatch]);
+  }, [
+    state.commandPaletteOpen,
+    state.settingsOpen,
+    state.sidebarMode,
+    dispatch,
+  ]);
 }

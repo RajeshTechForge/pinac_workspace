@@ -36,7 +36,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
             cookiePassword: WORKOS_COOKIE_PASSWORD,
           });
 
-          if (refreshResult.authenticated && refreshResult.sealedSession && refreshResult.user) {
+          if (
+            refreshResult.authenticated &&
+            refreshResult.sealedSession &&
+            refreshResult.user
+          ) {
             const opts = baseCookieOptions();
             context.cookies.set(SESSION_COOKIE, refreshResult.sealedSession, {
               httpOnly: true,
