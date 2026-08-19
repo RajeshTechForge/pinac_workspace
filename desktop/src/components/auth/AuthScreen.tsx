@@ -24,8 +24,8 @@ function errorMessage(error: DeepLinkAuthError): string {
           return "A network error occurred. Check your connection and try again.";
         case "INVALID_GRANT":
           return "The login grant was invalid or expired. Please try again.";
-        case "EXPIRED_CODE":
-          return "The login code expired. Please initiate a new login.";
+        case "RATE_LIMITED":
+          return "Too many login attempts. Please wait a moment and try again.";
         case "UNKNOWN":
           return "Something went wrong during login. Please try again.";
       }

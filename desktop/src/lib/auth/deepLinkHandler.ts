@@ -17,7 +17,7 @@ export type DeepLinkAuthError =
   | {
       readonly code: "EXCHANGE_FAILED";
       readonly message: string;
-      readonly kind: "INVALID_GRANT" | "EXPIRED_CODE" | "NETWORK" | "UNKNOWN";
+      readonly kind: "INVALID_GRANT" | "RATE_LIMITED" | "NETWORK" | "UNKNOWN";
     }
   | { readonly code: "STORAGE_ERROR"; readonly message: string };
 

@@ -15,7 +15,7 @@ export {
 // Token exchange
 export {
   exchangeCodeForTokens,
-  type WorkOSTokenResponse,
+  type WebsiteTokenResponse,
   type TokenExchangeError,
   type TokenExchangeResult,
 } from "./tokenExchange";

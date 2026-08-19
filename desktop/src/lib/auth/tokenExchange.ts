@@ -1,22 +1,22 @@
-export interface WorkOSTokenResponse {
+/**
+ * Typed response returned by the website's `POST /api/auth/token` proxy.
+ * Only the fields the desktop app actually reads are declared here.
+ */
+export interface WebsiteTokenResponse {
   readonly accessToken: string;
   readonly refreshToken: string;
-  /** WorkOS user object — keep only the fields we need. */
   readonly user: {
     readonly id: string;
     readonly email: string;
-    readonly firstName: string | null;
-    readonly lastName: string | null;
-    readonly profilePictureUrl: string | null;
   };
-  /** Access token expiry in seconds from now, if provided by WorkOS. */
+  /** Seconds until `accessToken` expires. Absent if the proxy omits it. */
   readonly accessTokenExpiresIn?: number;
 }
 
 /** Discriminated union of token exchange failures. */
 export type TokenExchangeError =
   | { readonly kind: "INVALID_GRANT"; readonly message: string }
-  | { readonly kind: "EXPIRED_CODE"; readonly message: string }
+  | { readonly kind: "RATE_LIMITED"; readonly message: string }
   | { readonly kind: "NETWORK"; readonly message: string }
   | {
       readonly kind: "UNKNOWN";
@@ -26,63 +26,93 @@ export type TokenExchangeError =
 
 /** Result of a token exchange attempt. */
 export type TokenExchangeResult =
-  | { readonly ok: true; readonly data: WorkOSTokenResponse }
+  | { readonly ok: true; readonly data: WebsiteTokenResponse }
   | { readonly ok: false; readonly error: TokenExchangeError };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-const TOKEN_ENDPOINT = "https://api.workos.com/user_management/authenticate";
-
-interface WorkOSErrorBody {
-  error?: string;
-  error_description?: string;
-  code?: string;
-  message?: string;
+/** Shape of the error body returned by the website proxy on non-2xx responses. */
+interface ProxyErrorBody {
+  error?: {
+    code?: string;
+    message?: string;
+  };
 }
 
+/**
+ * Maps the website proxy's error codes to the desktop's typed error union.
+ *
+ * Website error codes (per contract):
+ *   INVALID_BODY    — bad request from desktop (config error)
+ *   UNKNOWN_CLIENT  — client_id mismatch (config error)
+ *   INVALID_GRANT   — code expired/used or verifier mismatch
+ *   RATE_LIMITED    — WorkOS rate limit hit
+ *   API_ERROR       — upstream WorkOS / network failure
+ */
 function classifyError(
   status: number,
-  body: WorkOSErrorBody,
+  body: ProxyErrorBody,
 ): TokenExchangeError {
-  const errorCode = body.error ?? body.code ?? "";
-  const msg =
-    body.error_description ?? body.message ?? "Token exchange failed.";
+  const code = body.error?.code ?? "";
+  const msg = body.error?.message ?? "Token exchange failed.";
 
-  if (errorCode === "invalid_grant" || errorCode === "invalid_code") {
-    return { kind: "INVALID_GRANT", message: msg };
+  switch (code) {
+    case "INVALID_GRANT":
+      return { kind: "INVALID_GRANT", message: msg };
+    case "RATE_LIMITED":
+      return { kind: "RATE_LIMITED", message: msg };
+    case "API_ERROR":
+      // Upstream WorkOS / network failure — treat as transient network error.
+      return { kind: "NETWORK", message: msg };
+    default:
+      // INVALID_BODY and UNKNOWN_CLIENT indicate a desktop configuration error.
+      return { kind: "UNKNOWN", message: msg, rawStatus: status };
   }
-  if (
-    errorCode === "expired_code" ||
-    errorCode === "authorization_code_expired"
-  ) {
-    return { kind: "EXPIRED_CODE", message: msg };
-  }
-  return { kind: "UNKNOWN", message: msg, rawStatus: status };
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * Exchanges an authorization `code` + `codeVerifier` for tokens by calling
+ * the website's `POST /api/auth/token` proxy, which forwards the request to
+ * WorkOS and returns only the fields the desktop needs.
+ *
+ * @param code         - The authorization code from the deep-link callback.
+ * @param codeVerifier - The RFC 7636 code verifier generated at login start.
+ * @param clientId     - The WorkOS client ID (`VITE_WORKOS_CLIENT_ID`), sent
+ *                       for lightweight caller identity verification by the proxy.
+ */
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
   clientId: string,
 ): Promise<TokenExchangeResult> {
+  const baseUrl = import.meta.env.VITE_WEBSITE_BASE_URL as string | undefined;
+  if (!baseUrl) {
+    return {
+      ok: false,
+      error: {
+        kind: "UNKNOWN",
+        message: "VITE_WEBSITE_BASE_URL is not configured in desktop/.env.",
+      },
+    };
+  }
+
+  const tokenEndpoint = `${baseUrl}/api/auth/token`;
+
   let response: Response;
   try {
-    response = await fetch(TOKEN_ENDPOINT, {
+    response = await fetch(tokenEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        grant_type: "authorization_code",
-        client_id: clientId,
         code,
         code_verifier: codeVerifier,
-        // Intentionally omitting client_secret — this is a public client.
-        // PKCE provides the equivalent security guarantee for native apps.
+        client_id: clientId,
       }),
     });
   } catch (networkErr) {
@@ -93,17 +123,17 @@ export async function exchangeCodeForTokens(
         message:
           networkErr instanceof Error
             ? networkErr.message
-            : "Network request to WorkOS token endpoint failed.",
+            : "Network request to token proxy failed.",
       },
     };
   }
 
   if (!response.ok) {
-    let errorBody: WorkOSErrorBody = {};
+    let errorBody: ProxyErrorBody = {};
     try {
-      errorBody = (await response.json()) as WorkOSErrorBody;
+      errorBody = (await response.json()) as ProxyErrorBody;
     } catch {
-      // Non-JSON error body — classify generically.
+      // Non-JSON error body — classify generically by status alone.
     }
     return {
       ok: false,
@@ -119,14 +149,15 @@ export async function exchangeCodeForTokens(
       ok: false,
       error: {
         kind: "UNKNOWN",
-        message: "WorkOS returned a non-JSON success body.",
+        message: "Token proxy returned a non-JSON success body.",
       },
     };
   }
 
-  // Validate the shape of the response.
+  // Validate the shape of the success response.
   const accessToken = raw["access_token"];
   const refreshToken = raw["refresh_token"];
+  const expiresIn = raw["expires_in"];
   const user = raw["user"] as Record<string, unknown> | undefined;
 
   if (
@@ -140,7 +171,7 @@ export async function exchangeCodeForTokens(
       ok: false,
       error: {
         kind: "UNKNOWN",
-        message: "WorkOS token response is missing expected fields.",
+        message: "Token proxy response is missing expected fields.",
       },
     };
   }
@@ -153,14 +184,9 @@ export async function exchangeCodeForTokens(
       user: {
         id: user["id"] as string,
         email: user["email"] as string,
-        firstName: (user["first_name"] as string | null | undefined) ?? null,
-        lastName: (user["last_name"] as string | null | undefined) ?? null,
-        profilePictureUrl:
-          (user["profile_picture_url"] as string | null | undefined) ?? null,
       },
-      // WorkOS may return expires_in (seconds); if absent, default to 300s (5 min).
       accessTokenExpiresIn:
-        typeof raw["expires_in"] === "number" ? raw["expires_in"] : 300,
+        typeof expiresIn === "number" ? expiresIn : undefined,
     },
   };
 }
