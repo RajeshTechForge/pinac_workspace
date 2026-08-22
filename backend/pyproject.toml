@@ -1,13 +1,15 @@
 [project]
 name = "nexus"
-version = "0.1.0"
+version = "3.0.2"
 description = "Backend service for Pinac Workspace"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
+authors = [{ name = "Rajesh Mondal", email = "rajeshtechforge@gmail.com"}]
 dependencies = [
     "fastapi>=0.136.1",
     "itsdangerous>=2.2.0",
-    "kitkat[all-providers]>=0.1.0",
+    "kitkat[all-providers]>=0.8.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "uvicorn>=0.47.0",
@@ -19,8 +21,13 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 88
+target-version = "py311"
+line-length    = 100
+include        = ["src/nexus/**/*.py"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","SIM","TCH"]

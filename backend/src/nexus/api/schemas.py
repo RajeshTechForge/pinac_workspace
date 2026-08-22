@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from kitkat import LLMRequest, ProviderType
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from kitkat.core import LLMRequest, ProviderType
 from nexus.services.llm.schemas import (
     LLMResponseSchema,
     MessageSchema,
@@ -53,22 +53,14 @@ class ChatRequest(BaseSchema):
     """Payload for BYOK chat completions."""
 
     provider: ProviderType = Field(
-        ..., description="Which provider to use (anthropic, openai, gemini)."
+        ..., description="Which provider to use (anthropic, openai, google)."
     )
     api_key: str = Field(..., min_length=1, description="Provider API key (BYOK mode).")
-    model: str = Field(
-        default="", description="Model identifier. If empty, uses provider default."
-    )
-    messages: list[MessageSchema] = Field(
-        ..., min_length=1, description="Conversation history."
-    )
+    model: str = Field(default="", description="Model identifier. If empty, uses provider default.")
+    messages: list[MessageSchema] = Field(..., min_length=1, description="Conversation history.")
     stream: bool = Field(default=False, description="Whether to stream the response.")
-    max_tokens: int = Field(
-        default=2048, ge=1, le=128_000, description="Max tokens to generate."
-    )
-    temperature: float = Field(
-        default=0.1, ge=0.0, le=2.0, description="Sampling temperature."
-    )
+    max_tokens: int = Field(default=2048, ge=1, le=128_000, description="Max tokens to generate.")
+    temperature: float = Field(default=0.1, ge=0.0, le=2.0, description="Sampling temperature.")
     top_p: float = Field(default=1.0, ge=0.0, le=1.0, description="Nucleus sampling.")
     stop_sequences: list[str] = Field(
         default_factory=list, max_length=8, description="Stop sequences."

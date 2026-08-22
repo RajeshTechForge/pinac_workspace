@@ -29,9 +29,7 @@ def _load_toml(config_path: str | Path) -> dict:
         with open(config_path, "rb") as f:
             return tomllib.load(f)
     except tomllib.TOMLDecodeError as exc:
-        raise ValueError(
-            f"Invalid TOML in config file: '{config_path}'\nERROR: {exc}"
-        ) from exc
+        raise ValueError(f"Invalid TOML in config file: '{config_path}'\nERROR: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -42,9 +40,7 @@ def _load_toml(config_path: str | Path) -> dict:
 class SecuritySettings(BaseSettings):
     """Security-related settings for the application."""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", frozen=False
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", frozen=False)
 
     secret_key: str = Field(default="", alias="SECRET_KEY")
     algorithm: str = "HS256"
@@ -77,9 +73,7 @@ class CORSSettings(BaseSettings):
 
     allow_origins: list[str] = Field(default_factory=list)
     allow_credentials: bool = True
-    allow_methods: list[str] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"]
-    )
+    allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
     allow_headers: list[str] = Field(default_factory=lambda: ["*"])
 
     @classmethod
@@ -88,9 +82,7 @@ class CORSSettings(BaseSettings):
         cfg = data.get("cors", {})
         instance = cls()
         instance.allow_origins = cfg.get("allow_origins", instance.allow_origins)
-        instance.allow_credentials = cfg.get(
-            "allow_credentials", instance.allow_credentials
-        )
+        instance.allow_credentials = cfg.get("allow_credentials", instance.allow_credentials)
         instance.allow_methods = cfg.get("allow_methods", instance.allow_methods)
         instance.allow_headers = cfg.get("allow_headers", instance.allow_headers)
         return instance

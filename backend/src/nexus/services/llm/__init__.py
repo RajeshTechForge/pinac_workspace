@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from kitkat.abc import LLMProvider
-from kitkat.core import LLMRequest, LLMResponse, Message, Role
+from kitkat import LLMProvider, LLMRequest, LLMResponse, Message, Role
 from kitkat.providers.anthropic import AnthropicConfig, AnthropicProvider
-from kitkat.providers.gemini import GeminiConfig, GeminiProvider
+from kitkat.providers.google import GeminiConfig, GeminiProvider
 from kitkat.providers.openai import OpenAIConfig, OpenAIProvider
-from kitkat.service.byok import BYOKLLMService
+from kitkat.service import BYOKLLMService
 
 __all__ = [
     "LLMRequest",
