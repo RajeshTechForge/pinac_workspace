@@ -1,0 +1,7 @@
+{
+  "include": ["src/nexus"],
+  "exclude": ["docs", "examples", "**/__pycache__", ".venv"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "standard",
+  "reportAny": "none",
+}
