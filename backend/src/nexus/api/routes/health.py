@@ -1,6 +1,6 @@
 """Provide API routes for system health, readiness, and liveness checks."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -21,7 +21,7 @@ async def health_check(settings: SettingsDep):
         status="healthy",
         version=settings.app_version,
         environment=settings.environment,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 

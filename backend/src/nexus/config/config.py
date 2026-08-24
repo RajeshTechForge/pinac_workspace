@@ -53,12 +53,12 @@ class SecuritySettings(BaseSettings):
         if len(v) < 32:
             raise ValueError(
                 "SECRET_KEY must be at least 32 characters long. "
-                'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+                "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
             )
         return v
 
     @classmethod
-    def from_toml(cls, data: dict) -> "SecuritySettings":
+    def from_toml(cls, data: dict) -> SecuritySettings:
         """Initialise security settings from a parsed TOML dictionary."""
         sec = data.get("security", {})
         instance = cls()
@@ -77,7 +77,7 @@ class CORSSettings(BaseSettings):
     allow_headers: list[str] = Field(default_factory=lambda: ["*"])
 
     @classmethod
-    def from_toml(cls, data: dict) -> "CORSSettings":
+    def from_toml(cls, data: dict) -> CORSSettings:
         """Initialise CORS settings from a parsed TOML dictionary."""
         cfg = data.get("cors", {})
         instance = cls()
@@ -113,7 +113,7 @@ class AppSettings(BaseSettings):
     cors: CORSSettings = Field(default_factory=CORSSettings)
 
     @model_validator(mode="after")
-    def _load_toml_config(self) -> "AppSettings":
+    def _load_toml_config(self) -> AppSettings:
         """Merge structural config from the TOML file into this settings instance.
         Runs *after* Pydantic has populated all env-var fields (including
         "api_keys"), so the registry is guaranteed to be fully populated

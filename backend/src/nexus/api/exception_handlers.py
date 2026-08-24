@@ -27,7 +27,7 @@ def create_error_response(
 ) -> JSONResponse:
     """Build a standardized JSON error response payload."""
 
-    content = {
+    content: dict[str, object] = {
         "error": error,
         "message": message,
         "request_id": request_id,
@@ -127,7 +127,7 @@ async def unhandled_exception_handler(
 def register_exception_handlers(app: FastAPI) -> None:
     """Register API exception handlers on the FastAPI application."""
 
-    app.add_exception_handler(NexusError, nexus_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(Exception, unhandled_exception_handler)
+    app.exception_handler(NexusError)(nexus_exception_handler)
+    app.exception_handler(RequestValidationError)(validation_exception_handler)
+    app.exception_handler(StarletteHTTPException)(http_exception_handler)
+    app.exception_handler(Exception)(unhandled_exception_handler)

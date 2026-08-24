@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from kitkat import LLMRequest, ProviderType
+from kitkat import LLMRequest
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from nexus.services.llm.schemas import (
@@ -11,6 +11,9 @@ from nexus.services.llm.schemas import (
     MessageSchema,
     ThinkingConfigSchema,
 )
+
+if TYPE_CHECKING:
+    from kitkat.core.enums import ByokProviderType
 
 
 class BaseSchema(BaseModel):
@@ -52,8 +55,8 @@ class DetailedHealthResponse(HealthResponse):
 class ChatRequest(BaseSchema):
     """Payload for BYOK chat completions."""
 
-    provider: ProviderType = Field(
-        ..., description="Which provider to use (anthropic, openai, google)."
+    provider: ByokProviderType = Field(
+        ..., description="Which provider to use (anthropic, openai, gemini)."
     )
     api_key: str = Field(..., min_length=1, description="Provider API key (BYOK mode).")
     model: str = Field(default="", description="Model identifier. If empty, uses provider default.")
@@ -77,7 +80,7 @@ class ChatRequest(BaseSchema):
     )
 
     @model_validator(mode="after")
-    def thinking_provider_must_match(self) -> "ChatRequest":
+    def thinking_provider_must_match(self) -> ChatRequest:
         """Ensure provider_options.provider matches the top-level provider field.
 
         Raises:

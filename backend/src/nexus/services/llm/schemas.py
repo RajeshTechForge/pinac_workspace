@@ -8,7 +8,7 @@ boundaries and specific structural constraints.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from kitkat import (
@@ -54,7 +54,7 @@ class MessageSchema(BaseModel):
         return Message(role=Role(self.role), content=self.content)
 
     @classmethod
-    def from_domain(cls, msg: Message) -> "MessageSchema":
+    def from_domain(cls, msg: Message) -> MessageSchema:
         """Build from the internal domain dataclass.
 
         Args:
@@ -244,17 +244,18 @@ class LLMRequestSchema(BaseModel):
     )
 
     @model_validator(mode="after")
-    def system_message_at_most_one_and_first(self) -> "LLMRequestSchema":
+    def system_message_at_most_one_and_first(self) -> LLMRequestSchema:
         """Enforce that at most one system message is present and it is the first message.
 
         Raises:
-            ValueError: If multiple system messages are provided or if the system message is not at the first position.
+            ValueError: If multiple system messages are provided or if the system message
+            is not at the first position.
         """
         system_positions = [i for i, m in enumerate(self.messages) if m.role == Role.SYSTEM.value]
         if len(system_positions) > 1:
             raise ValueError(
-                f"At most one system message is allowed; "
-                f"found {len(system_positions)} at positions {system_positions}."
+                f"At most one system message is allowed; found {len(system_positions)}"
+                f" at positions {system_positions}."
             )
         if system_positions and system_positions[0] != 0:
             raise ValueError(
@@ -290,7 +291,7 @@ class LLMRequestSchema(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, req: LLMRequest) -> "LLMRequestSchema":
+    def from_domain(cls, req: LLMRequest) -> LLMRequestSchema:
         """Build from the internal domain dataclass.
 
         Args:
@@ -358,7 +359,7 @@ class TokenUsageSchema(BaseModel):
     )
 
     @model_validator(mode="after")
-    def total_is_consistent(self) -> "TokenUsageSchema":
+    def total_is_consistent(self) -> TokenUsageSchema:
         """Auto-correct total_tokens when providers omit it or round differently.
 
         Returns:
@@ -383,7 +384,7 @@ class TokenUsageSchema(BaseModel):
         )
 
     @classmethod
-    def from_domain(cls, usage: TokenUsage) -> "TokenUsageSchema":
+    def from_domain(cls, usage: TokenUsage) -> TokenUsageSchema:
         """Build from the internal domain dataclass."""
         return cls(
             prompt_tokens=usage.prompt_tokens,
@@ -441,7 +442,7 @@ class LLMResponseSchema(BaseModel):
         resp: LLMResponse,
         *,
         cached: bool = False,
-    ) -> "LLMResponseSchema":
+    ) -> LLMResponseSchema:
         """Convert from the internal domain LLMResponse dataclass.
 
         Args:
@@ -530,7 +531,7 @@ class StreamChunkSchema(BaseModel):
     )
 
     @classmethod
-    def from_domain(cls, chunk: StreamChunk) -> "StreamChunkSchema":
+    def from_domain(cls, chunk: StreamChunk) -> StreamChunkSchema:
         """Build from the internal StreamChunk dataclass.
 
         Args:
@@ -569,7 +570,7 @@ class StreamChunkSchema(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class StreamEventType(str, Enum):
+class StreamEventType(StrEnum):
     """Discriminator values for SSE frames sent by the streaming endpoint."""
 
     CHUNK = "chunk"

@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from kitkat.core.exceptions import LLMError
+from kitkat import LLMError
 from kitkat.service.byok import BYOKLLMService
 
 from nexus.api.schemas import ChatRequest, ChatResponse
@@ -50,11 +50,11 @@ async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
             request = body.to_llm_request()
             async for chunk in svc.stream(request):
                 event = StreamChunkEvent(data=StreamChunkSchema.from_domain(chunk))
-                yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
+                yield f"data: {event.model_dump_json()}\n\n".encode()
 
     except LLMError as exc:
         event = _llm_error_to_sse(exc)
-        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
+        yield f"data: {event.model_dump_json()}\n\n".encode()
     except NexusError as exc:
         event = StreamErrorEvent(
             error=StreamErrorPayload(
@@ -63,7 +63,7 @@ async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
                 details=exc.details,
             )
         )
-        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
+        yield f"data: {event.model_dump_json()}\n\n".encode()
     except Exception:
         event = StreamErrorEvent(
             error=StreamErrorPayload(
@@ -71,7 +71,7 @@ async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
                 message="An unexpected error occurred during streaming.",
             )
         )
-        yield f"data: {event.model_dump_json()}\n\n".encode("utf-8")
+        yield f"data: {event.model_dump_json()}\n\n".encode()
 
 
 @router.post("/chat")
