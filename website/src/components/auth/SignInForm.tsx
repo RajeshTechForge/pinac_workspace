@@ -62,8 +62,7 @@ export function SignInForm() {
   );
 
   const handleSocial = (provider: "google" | "github") => {
-    // Top-level navigation; the server sets the oauth_state cookie and 302s
-    // to WorkOS. No fetch needed.
+    // Top-level navigation; the server handles OAuth redirect. No fetch needed.
     window.location.href = `/api/auth/social/${provider}`;
   };
 

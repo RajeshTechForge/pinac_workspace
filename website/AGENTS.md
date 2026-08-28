@@ -85,7 +85,7 @@ Pinac-Workspace's official website is a production-grade marketing & content web
 │   ├── AuthLayout.astro
 │   └── MainLayout.astro
 ├── lib
-│   └── workos.ts
+│   └── supabase.ts
 ├── pages
 │   ├── api
 │   │   └── auth

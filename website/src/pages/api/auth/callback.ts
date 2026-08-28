@@ -2,54 +2,45 @@ export const prerender = false;
 
 import type { APIRoute } from "astro";
 import {
-  workos,
-  WORKOS_CLIENT_ID,
-  WORKOS_COOKIE_PASSWORD,
-  SESSION_COOKIE,
-  OAUTH_STATE_COOKIE,
+  createSupabaseServerClient,
   POST_LOGIN_ROUTE,
   SIGNIN_ROUTE,
-  baseCookieOptions,
-} from "../../../lib/workos";
+} from "../../../lib/supabase";
 
-export const GET: APIRoute = async ({ url, redirect, cookies }) => {
+export const GET: APIRoute = async (context) => {
+  const { url, redirect, cookies, request } = context;
+
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  const storedState = cookies.get(OAUTH_STATE_COOKIE)?.value;
+  const error = url.searchParams.get("error");
+  const errorDescription = url.searchParams.get("error_description");
 
-  // Always clear the state cookie once consumed.
-  const clearStateCookie = `${OAUTH_STATE_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${
-    baseCookieOptions().secure ? "; Secure" : ""
-  }; Max-Age=0`;
+  if (error) {
+    console.error(
+      `[api/auth/callback] OAuth callback returned error: ${error} - ${errorDescription ?? ""}`,
+    );
+    return redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
+  }
 
-  if (!code || !state || !storedState || state !== storedState) {
-    const res = redirect(`${SIGNIN_ROUTE}?error=STATE_MISMATCH`, 302);
-    res.headers.append("Set-Cookie", clearStateCookie);
-    return res;
+  if (!code) {
+    return redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
   }
 
   try {
-    const authRes = await workos.userManagement.authenticateWithCode({
-      clientId: WORKOS_CLIENT_ID,
-      code,
-      session: {
-        sealSession: true,
-        cookiePassword: WORKOS_COOKIE_PASSWORD,
-      },
-    });
+    const supabase = createSupabaseServerClient(cookies, request);
+    const { error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
 
-    const res = redirect(POST_LOGIN_ROUTE, 302);
-    res.headers.append(
-      "Set-Cookie",
-      `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
-        baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`,
-    );
-    res.headers.append("Set-Cookie", clearStateCookie);
-    return res;
+    if (exchangeError) {
+      console.error(
+        "[api/auth/callback] Supabase exchangeCodeForSession failed:",
+        exchangeError.message,
+      );
+      return redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
+    }
+
+    return redirect(POST_LOGIN_ROUTE, 302);
   } catch (err) {
-    const res = redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
-    res.headers.append("Set-Cookie", clearStateCookie);
-    return res;
+    console.error("[api/auth/callback] Unexpected error:", err);
+    return redirect(`${SIGNIN_ROUTE}?error=OAUTH_FAILED`, 302);
   }
 };

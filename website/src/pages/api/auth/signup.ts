@@ -2,10 +2,10 @@ export const prerender = false;
 
 import type { APIRoute } from "astro";
 import {
-  workos,
-  WORKOS_CLIENT_ID,
-  WORKOS_COOKIE_PASSWORD,
-} from "../../../lib/workos";
+  createSupabaseServerClient,
+  APP_BASE_URL,
+  POST_LOGIN_ROUTE,
+} from "../../../lib/supabase";
 
 interface SignupRequestBody {
   email?: unknown;
@@ -42,7 +42,9 @@ function json(body: SignupResponse, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, cookies } = context;
+
   let parsed: unknown;
   try {
     parsed = await request.json();
@@ -82,95 +84,110 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const fName =
+    typeof firstName === "string" && firstName.trim()
+      ? firstName.trim()
+      : undefined;
+  const lName =
+    typeof lastName === "string" && lastName.trim()
+      ? lastName.trim()
+      : undefined;
+
   try {
-    const user = await workos.userManagement.createUser({
-      email: email.trim().toLowerCase(),
+    const supabase = createSupabaseServerClient(cookies, request);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
       password,
-      firstName:
-        typeof firstName === "string" && firstName.trim()
-          ? firstName.trim()
-          : undefined,
-      lastName:
-        typeof lastName === "string" && lastName.trim()
-          ? lastName.trim()
-          : undefined,
+      options: {
+        data: {
+          first_name: fName,
+          last_name: lName,
+          firstName: fName,
+          lastName: lName,
+        },
+        emailRedirectTo: `${APP_BASE_URL}/api/auth/callback`,
+      },
     });
 
-    const normalizedEmail = email.trim().toLowerCase();
-    try {
-      await workos.userManagement.authenticateWithPassword({
-        clientId: WORKOS_CLIENT_ID,
-        email: normalizedEmail,
-        password,
-        session: {
-          sealSession: true,
-          cookiePassword: WORKOS_COOKIE_PASSWORD,
-        },
-      });
+    if (error) {
+      const msg = error.message.toLowerCase();
+      const code = error.code ?? "";
 
-      // Should never reach here for a freshly-created unverified user;
-      // fall back to the legacy "sign in to verify" path defensively.
-      return json(
-        {
-          ok: true,
-          userId: user.id,
-          redirectTo: "/auth/sign-in?created=1",
-          pendingVerification: true,
-        },
-        201,
-      );
-    } catch (authErr) {
-      const aErr = authErr as {
-        code?: string;
-        message?: string;
-        pendingAuthenticationToken?: string;
-      };
-      const aCode = aErr.code ?? "";
-
-      if (aCode === "email_verification_required") {
-        const token = aErr.pendingAuthenticationToken ?? "";
-        if (!token) {
-          return json(
-            {
-              ok: true,
-              userId: user.id,
-              redirectTo: "/auth/sign-in?created=1",
-              pendingVerification: true,
-            },
-            201,
-          );
-        }
-        const encodedEmail = encodeURIComponent(normalizedEmail);
-        const encodedToken = encodeURIComponent(token);
+      if (
+        code === "user_already_exists" ||
+        msg.includes("already registered") ||
+        msg.includes("already exists") ||
+        msg.includes("user already exists")
+      ) {
         return json(
           {
-            ok: true,
-            userId: user.id,
-            redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodedToken}`,
-            pendingVerification: true,
+            ok: false,
+            error: {
+              code: "USER_EXISTS",
+              message: "An account with this email already exists.",
+            },
           },
-          201,
+          409,
         );
       }
 
-      // Any other post-creation auth error: don't leak details, fall back
-      // to sign-in so the user can still trigger verification manually.
+      if (
+        code === "weak_password" ||
+        msg.includes("password") ||
+        msg.includes("weak")
+      ) {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "WEAK_PASSWORD",
+              message:
+                "Password is too weak. Use a longer, more complex password.",
+            },
+          },
+          400,
+        );
+      }
+
+      if (
+        code === "validation_failed" ||
+        msg.includes("email") ||
+        msg.includes("invalid")
+      ) {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "INVALID_EMAIL",
+              message: "Invalid email address format.",
+            },
+          },
+          400,
+        );
+      }
+
+      console.error("[api/auth/signup] Supabase signUp error:", error.message);
       return json(
         {
-          ok: true,
-          userId: user.id,
-          redirectTo: "/auth/sign-in?created=1",
-          pendingVerification: true,
+          ok: false,
+          error: {
+            code: "API_ERROR",
+            message: "Sign-up failed. Please try again.",
+          },
         },
-        201,
+        502,
       );
     }
-  } catch (err) {
-    const e = err as { code?: string; message?: string };
-    const msg = e.message ?? "";
 
-    // WorkOS returns specific codes. Map the common ones deterministically.
-    if (e.code === "email_already_in_use" || /already exists/i.test(msg)) {
+    // Supabase security feature: when user enumeration protection is enabled
+    // and email is already registered, signUp returns a user with empty identities.
+    if (
+      data.user &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+    ) {
       return json(
         {
           ok: false,
@@ -182,36 +199,37 @@ export const POST: APIRoute = async ({ request }) => {
         409,
       );
     }
-    if (
-      e.code === "password_strength_validation_failed" ||
-      /password/i.test(msg)
-    ) {
+
+    if (!data.user) {
       return json(
         {
           ok: false,
           error: {
-            code: "WEAK_PASSWORD",
-            message:
-              "Password is too weak. Use a longer, more complex password.",
+            code: "API_ERROR",
+            message: "Sign-up failed. User not created.",
           },
         },
-        400,
-      );
-    }
-    if (e.code === "email_validation_failed" || /email/i.test(msg)) {
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "INVALID_EMAIL",
-            message: "WorkOS rejected this email address.",
-          },
-        },
-        400,
+        502,
       );
     }
 
-    // Never leak raw SDK error details to the client.
+    // Check if email confirmation is pending
+    const isPendingVerification = !data.session;
+    const encodedEmail = encodeURIComponent(normalizedEmail);
+
+    return json(
+      {
+        ok: true,
+        userId: data.user.id,
+        redirectTo: isPendingVerification
+          ? `/auth/verify-email?email=${encodedEmail}`
+          : POST_LOGIN_ROUTE,
+        pendingVerification: isPendingVerification,
+      },
+      201,
+    );
+  } catch (err) {
+    console.error("[api/auth/signup] Unexpected error:", err);
     return json(
       {
         ok: false,

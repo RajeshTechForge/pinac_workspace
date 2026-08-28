@@ -2,13 +2,11 @@ export const prerender = false;
 
 import type { APIRoute } from "astro";
 import {
-  workos,
-  WORKOS_COOKIE_PASSWORD,
-  WORKOS_CLIENT_ID,
-  SESSION_COOKIE,
-  baseCookieOptions,
+  createSupabaseServerClient,
+  POST_LOGIN_ROUTE,
   toSafeUser,
-} from "../../../lib/workos";
+  type SafeUser,
+} from "../../../lib/supabase";
 
 interface SigninRequestBody {
   email?: unknown;
@@ -29,12 +27,7 @@ interface ApiError {
 
 interface SigninSuccess {
   ok: true;
-  user: {
-    id: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-  };
+  user: SafeUser;
   redirectTo: string;
 }
 
@@ -50,7 +43,9 @@ function json(body: SigninResponse, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, cookies } = context;
+
   let parsed: unknown;
   try {
     parsed = await request.json();
@@ -85,87 +80,118 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
   try {
-    const authRes = await workos.userManagement.authenticateWithPassword({
-      clientId: WORKOS_CLIENT_ID,
-      email: email.trim().toLowerCase(),
+    const supabase = createSupabaseServerClient(cookies, request);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
       password,
-      session: {
-        sealSession: true,
-        cookiePassword: WORKOS_COOKIE_PASSWORD,
-      },
     });
 
-    const res = json(
+    if (error) {
+      const msg = error.message.toLowerCase();
+      const code = error.code ?? "";
+
+      if (code === "email_not_confirmed" || msg.includes("not confirmed")) {
+        // Automatically trigger OTP resend so the user receives a fresh 6-digit code
+        try {
+          await supabase.auth.resend({
+            type: "signup",
+            email: normalizedEmail,
+          });
+        } catch {
+          // Non-blocking catch if resend is rate-limited
+        }
+
+        const encodedEmail = encodeURIComponent(normalizedEmail);
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "EMAIL_NOT_VERIFIED",
+              message:
+                "Please verify your email address before signing in. A new code has been sent.",
+              email: normalizedEmail,
+            },
+            redirectTo: `/auth/verify-email?email=${encodedEmail}`,
+          },
+          403,
+        );
+      }
+
+      if (
+        code === "invalid_credentials" ||
+        code === "invalid_grant" ||
+        msg.includes("invalid login credentials") ||
+        msg.includes("invalid credentials")
+      ) {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "INVALID_CREDENTIALS",
+              message: "Incorrect email or password.",
+            },
+          },
+          401,
+        );
+      }
+
+      if (
+        error.status === 429 ||
+        code === "over_request_rate_limit" ||
+        msg.includes("rate limit")
+      ) {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "RATE_LIMITED",
+              message: "Too many attempts. Please wait a moment and try again.",
+            },
+          },
+          429,
+        );
+      }
+
+      console.error("[api/auth/signin] Supabase sign-in error:", error.message);
+      return json(
+        {
+          ok: false,
+          error: {
+            code: "API_ERROR",
+            message: "Sign-in failed. Please try again.",
+          },
+        },
+        502,
+      );
+    }
+
+    if (!data.user) {
+      return json(
+        {
+          ok: false,
+          error: {
+            code: "API_ERROR",
+            message: "Sign-in failed. User not returned.",
+          },
+        },
+        502,
+      );
+    }
+
+    return json(
       {
         ok: true,
-        user: toSafeUser(authRes.user),
-        redirectTo: "/dashboard",
+        user: toSafeUser(data.user),
+        redirectTo: POST_LOGIN_ROUTE,
       },
       200,
     );
-
-    res.headers.append(
-      "Set-Cookie",
-      `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
-        baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`,
-    );
-    return res;
   } catch (err) {
-    const e = err as {
-      code?: string;
-      message?: string;
-      pendingAuthenticationToken?: string;
-    };
-    const code = e.code ?? "";
-
-    if (code === "email_verification_required") {
-      const pat = e.pendingAuthenticationToken ?? "";
-      const encodedEmail = encodeURIComponent(email.trim().toLowerCase());
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "EMAIL_NOT_VERIFIED",
-            message: "Please verify your email address before signing in.",
-            pendingAuthenticationToken: pat,
-            email: email.trim().toLowerCase(),
-          },
-          redirectTo: `/auth/verify-email?email=${encodedEmail}&token=${encodeURIComponent(pat)}`,
-        },
-        403,
-      );
-    }
-    if (
-      code === "invalid_credentials" ||
-      code === "invalid_grant" ||
-      /invalid credentials/i.test(e.message ?? "")
-    ) {
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "INVALID_CREDENTIALS",
-            message: "Incorrect email or password.",
-          },
-        },
-        401,
-      );
-    }
-    if (code === "rate_limit_exceeded" || /rate limit/i.test(e.message ?? "")) {
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "RATE_LIMITED",
-            message: "Too many attempts. Please wait a moment and try again.",
-          },
-        },
-        429,
-      );
-    }
-
+    console.error("[api/auth/signin] Unexpected error:", err);
     return json(
       {
         ok: false,

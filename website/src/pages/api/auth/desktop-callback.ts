@@ -1,7 +1,6 @@
 /**
- * desktop-callback.ts — WorkOS redirect target for the native-client PKCE flow.
- * ISOLATION: No web session cookies are read or written.  The SESSION_COOKIE
- * and OAUTH_STATE_COOKIE from workos.ts are never touched here.
+ * desktop-callback.ts — Supabase redirect target for the native-client PKCE flow.
+ * ISOLATION: No web session cookies are read or written here.
  */
 
 export const prerender = false;
@@ -125,18 +124,18 @@ export const GET: APIRoute = ({ url }) => {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
-  // WorkOS can also send `error` and `error_description` on failure.
+  // OAuth error handling
   const oauthError = url.searchParams.get("error");
   const oauthErrorDesc = url.searchParams.get("error_description");
 
   if (oauthError) {
     console.error(
-      `[desktop-callback] WorkOS returned an error: ${oauthError} — ${oauthErrorDesc ?? ""}`,
+      `[desktop-callback] OAuth returned an error: ${oauthError} — ${oauthErrorDesc ?? ""}`,
     );
     return errorPage(
       400,
       "Authentication Failed",
-      `WorkOS reported an error: <strong>${oauthError}</strong>. ` +
+      `Authentication provider reported an error: <strong>${oauthError}</strong>. ` +
         (oauthErrorDesc ? `Details: ${oauthErrorDesc}.` : ""),
     );
   }
@@ -146,26 +145,21 @@ export const GET: APIRoute = ({ url }) => {
       400,
       "Missing Parameters",
       "The callback URL is missing the required <code>code</code> or <code>state</code> " +
-        "parameter. This may indicate a misconfigured redirect URI in the WorkOS dashboard.",
+        "parameter. This may indicate a misconfigured redirect URI in the Supabase dashboard.",
     );
   }
 
   // Build the deep link URL that hands the code back to the desktop app.
-  // The desktop app's deepLinkHandler.ts will:
+  // The desktop app will:
   //   1. Validate state against the in-memory pending flow.
-  //   2. Exchange code + code_verifier for tokens.
+  //   2. Exchange code + code_verifier for tokens via POST /api/auth/token.
   const deepLinkUrl = `pinac://auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
 
-  // Render the confirmation page with both a meta-refresh and a JS redirect
-  // to the deep link.  The OS will intercept the pinac:// scheme and hand
-  // control back to the Pinac Workspace desktop app.
+  // Render the confirmation page with meta-refresh, JS redirect, and Location header.
   return new Response(confirmationPage(deepLinkUrl), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      // Belt-and-suspenders: also attempt the redirect at the HTTP layer.
-      // Some browsers honour this; others (Firefox) require user gesture for
-      // custom-scheme navigation — the JS fallback handles those.
       Location: deepLinkUrl,
     },
   });

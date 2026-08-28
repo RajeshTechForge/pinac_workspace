@@ -1,14 +1,19 @@
 /**
  * desktop-login.ts — PKCE relay route for the Pinac-Workspace desktop app.
  *
- * The `redirectUri` in getAuthorizationUrl points to /api/auth/desktop-callback,
- * which hands the code back to the desktop app via the pinac:// scheme.
+ * The `redirect_to` parameter in Supabase authorize points to /api/auth/desktop-callback,
+ * which hands the authorization code back to the desktop app via the pinac:// scheme.
  */
 
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { workos, WORKOS_CLIENT_ID, DESKTOP_CALLBACK_URI } from "../lib/workos";
+import {
+  SUPABASE_URL,
+  DESKTOP_CALLBACK_URI,
+  ALLOWED_OAUTH_PROVIDERS,
+  type AllowedProvider,
+} from "../lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -54,6 +59,7 @@ export const GET: APIRoute = async ({ url, redirect }) => {
   const codeChallenge = url.searchParams.get("code_challenge");
   const codeChallengeMethod = url.searchParams.get("code_challenge_method");
   const state = url.searchParams.get("state");
+  const requestedProvider = url.searchParams.get("provider");
 
   // ── Param presence ────────────────────────────────────────────────────────
   if (!codeChallenge || !codeChallengeMethod || !state) {
@@ -97,30 +103,33 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     );
   }
 
-  // ── Build the WorkOS authorization URL ───────────────────────────────────
+  // ── Provider selection ───────────────────────────────────────────────────
+  let provider: AllowedProvider = "google";
+  if (
+    typeof requestedProvider === "string" &&
+    ALLOWED_OAUTH_PROVIDERS.includes(requestedProvider as AllowedProvider)
+  ) {
+    provider = requestedProvider as AllowedProvider;
+  }
+
+  // ── Build the Supabase GoTrue PKCE authorization URL ─────────────────────
   let authUrl: string;
   try {
-    // getAuthorizationUrl accepts codeChallenge + codeChallengeMethod directly
-    // when passed as options. The desktop app already generated these; the SDK
-    // does not need to (and must not) regenerate them.
-    // Ref: WorkOS Node SDK docs — getAuthorizationUrl options (July 2025).
-    authUrl = workos.userManagement.getAuthorizationUrl({
-      clientId: WORKOS_CLIENT_ID,
-      redirectUri: DESKTOP_CALLBACK_URI,
+    const params = new URLSearchParams({
+      provider,
+      code_challenge: codeChallenge,
+      code_challenge_method: "s256",
+      redirect_to: DESKTOP_CALLBACK_URI,
       state,
-      // PKCE params forwarded verbatim from the desktop app:
-      codeChallenge,
-      codeChallengeMethod: "S256",
-      // "authkit" instructs WorkOS to render its hosted AuthKit sign-in UI,
-      // which lets the user choose email/password, Google, or GitHub — exactly
-      // the same multi-method experience as the web login. One of provider /
-      // connectionId / organizationId is mandatory; this is the correct value
-      // for a generic password + social sign-in page.
-      provider: "authkit",
     });
+
+    authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[desktop-login] getAuthorizationUrl failed:", message);
+    console.error(
+      "[desktop-login] Authorization URL generation failed:",
+      message,
+    );
     return errorPage(
       502,
       "Authorization Error",
@@ -128,7 +137,6 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     );
   }
 
-  // Redirect into the WorkOS-hosted custom-UI sign-in flow.
-  // The user will see the same sign-in page as on the web.
+  // Redirect into the Supabase-hosted / OAuth provider sign-in flow.
   return redirect(authUrl, 302);
 };

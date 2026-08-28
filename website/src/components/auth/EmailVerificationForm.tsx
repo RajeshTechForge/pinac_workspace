@@ -8,8 +8,7 @@ type ErrorCode = "INVALID_BODY" | "INVALID_CODE" | "EXPIRED_CODE" | "API_ERROR";
 const ERROR_MESSAGES: Record<ErrorCode, string> = {
   INVALID_BODY: "Please enter the full verification code.",
   INVALID_CODE: "Incorrect code. Please check your email and try again.",
-  EXPIRED_CODE:
-    "This code has expired. Please sign in again to receive a new one.",
+  EXPIRED_CODE: "This code has expired. Please request a new code below.",
   API_ERROR: "Verification failed. Please try again.",
 };
 
@@ -27,6 +26,8 @@ function readUrlParams(): { email: string; token: string } {
 export function EmailVerificationForm() {
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -47,6 +48,7 @@ export function EmailVerificationForm() {
       return next;
     });
     setError(null);
+    setResendNotice(null);
 
     // Auto-advance to next input.
     if (digit && index < CODE_LENGTH - 1) {
@@ -74,6 +76,7 @@ export function EmailVerificationForm() {
     }
     setDigits(newDigits);
     setError(null);
+    setResendNotice(null);
 
     // Focus the last filled input or the first empty one.
     const focusIndex = Math.min(pasted.length, CODE_LENGTH) - 1;
@@ -90,21 +93,26 @@ export function EmailVerificationForm() {
       return;
     }
 
-    if (!token) {
+    if (!email && !token) {
       setError(
-        "Missing authentication token. Please sign in again to restart verification.",
+        "Missing email address. Please sign in again to restart verification.",
       );
       return;
     }
 
     setError(null);
+    setResendNotice(null);
     setSubmitting(true);
 
     try {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code, pendingAuthenticationToken: token }),
+        body: JSON.stringify({
+          code,
+          email,
+          pendingAuthenticationToken: token,
+        }),
       });
 
       const data = (await res.json().catch(() => null)) as
@@ -127,9 +135,43 @@ export function EmailVerificationForm() {
     }
   };
 
+  const handleResend = async (): Promise<void> => {
+    if (resending || !email) return;
+    setResending(true);
+    setError(null);
+    setResendNotice(null);
+
+    try {
+      const res = await fetch("/api/auth/resend", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        ok: boolean;
+        message?: string;
+        error?: { code: string; message: string };
+      } | null;
+
+      if (data && data.ok) {
+        setResendNotice("A new 6-digit code has been sent to your email!");
+      } else {
+        setError(
+          data?.error?.message ??
+            "Failed to resend code. Please wait a moment.",
+        );
+      }
+    } catch {
+      setError("Network error. Could not resend verification code.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleReset = (): void => {
     setDigits(Array(CODE_LENGTH).fill(""));
     setError(null);
+    setResendNotice(null);
     inputRefs.current[0]?.focus();
   };
 
@@ -175,6 +217,18 @@ export function EmailVerificationForm() {
           transition={{ duration: 0.2 }}
         >
           {error}
+        </motion.div>
+      )}
+
+      {/* Resend Notice */}
+      {resendNotice && (
+        <motion.div
+          className="rounded border border-pulsar/40 bg-pulsar/10 px-3 py-2 text-sm text-pulsar"
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {resendNotice}
         </motion.div>
       )}
 
@@ -247,14 +301,16 @@ export function EmailVerificationForm() {
           Clear & re-enter
         </button>
 
-        <div className="text-star-400">
-          Didn't receive a code?{" "}
-          <a
-            href="/auth/sign-in"
-            className="text-nebula hover:text-star-100 transition-colors font-medium"
+        <div className="flex items-center gap-1.5 text-star-400">
+          <span>Didn't receive a code?</span>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || submitting || success || !email}
+            className="text-nebula hover:text-star-100 transition-colors font-medium disabled:opacity-50"
           >
-            Sign in again
-          </a>
+            {resending ? "Sending…" : "Resend code"}
+          </button>
         </div>
 
         <a

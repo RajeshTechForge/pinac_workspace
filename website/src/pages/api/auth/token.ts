@@ -2,16 +2,19 @@
  * POST /api/auth/token — PKCE authorization-code exchange proxy.
  *
  * The desktop app POSTs { code, code_verifier } here after receiving
- * the authorization code via the pinac:// deep-link callback.  This endpoint
- * calls WorkOS on behalf of the desktop so that the WorkOS API key never leaves
- * the server and the token exchange follows the correct PKCE architecture.
- *
+ * the authorization code via the pinac:// deep-link callback. This endpoint
+ * exchanges the code with Supabase GoTrue so that the token exchange follows
+ * the correct PKCE architecture and returns the expected contract.
  */
 
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { workos, WORKOS_CLIENT_ID } from "../../../lib/workos";
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  toSafeUser,
+} from "../../../lib/supabase";
 
 const TAURI_ORIGINS = new Set([
   "http://localhost:1420", // Dev mode
@@ -75,8 +78,6 @@ type TokenResponse = TokenSuccess | TokenError;
 
 const CODE_VERIFIER_RE = /^[A-Za-z0-9\-._~]{43,128}$/;
 
-const TOKEN_EXPIRES_IN = 300;
-
 function json(body: TokenResponse, status: number, origin: string): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -136,7 +137,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  // Validate code_verifier
+  // Validate code_verifier (RFC 7636 §4.1)
   if (
     typeof code_verifier !== "string" ||
     !CODE_VERIFIER_RE.test(code_verifier)
@@ -149,61 +150,94 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  // Exchange code + verifier with WorkOS
+  // Exchange code + code_verifier with Supabase GoTrue PKCE endpoint
   try {
-    const authRes = await workos.userManagement.authenticateWithCode({
-      clientId: WORKOS_CLIENT_ID,
-      code: code.trim(),
-      codeVerifier: code_verifier,
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        auth_code: code.trim(),
+        code_verifier: code_verifier.trim(),
+      }),
     });
+
+    const data = (await res.json().catch(() => null)) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      user?: {
+        id: string;
+        email?: string | null;
+        user_metadata?: Record<string, unknown> | null;
+      };
+      error?: string;
+      error_description?: string;
+      msg?: string;
+    } | null;
+
+    if (!res.ok || !data || !data.access_token || !data.user) {
+      const errMsg =
+        data?.error_description ||
+        data?.msg ||
+        data?.error ||
+        "Token exchange failed.";
+
+      if (
+        res.status === 400 ||
+        res.status === 401 ||
+        /invalid.grant/i.test(errMsg) ||
+        /invalid_grant/i.test(errMsg) ||
+        /expired/i.test(errMsg)
+      ) {
+        return errorResponse(
+          401,
+          "INVALID_GRANT",
+          "The authorization code is invalid, expired, or the code_verifier does not match.",
+          origin,
+        );
+      }
+
+      if (res.status === 429 || /rate/i.test(errMsg)) {
+        return errorResponse(
+          429,
+          "RATE_LIMITED",
+          "Too many token exchange attempts. Please wait a moment and try again.",
+          origin,
+        );
+      }
+
+      console.error("[api/auth/token] Supabase PKCE exchange failed:", errMsg);
+      return errorResponse(
+        502,
+        "API_ERROR",
+        "Token exchange failed. Please try again.",
+        origin,
+      );
+    }
+
+    const safeUser = toSafeUser(data.user);
 
     const body: TokenSuccess = {
       ok: true,
-      access_token: authRes.accessToken,
-      refresh_token: authRes.refreshToken,
-      expires_in: TOKEN_EXPIRES_IN,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token ?? "",
+      expires_in: data.expires_in ?? 3600,
       user: {
-        id: authRes.user.id,
-        email: authRes.user.email,
-        first_name: authRes.user.firstName ?? null,
-        last_name: authRes.user.lastName ?? null,
+        id: safeUser.id,
+        email: safeUser.email,
+        first_name: safeUser.firstName,
+        last_name: safeUser.lastName,
       },
     };
 
     return json(body, 200, origin);
   } catch (err) {
-    const e = err as { code?: string; message?: string };
-    const errCode = e.code ?? "";
-    const errMsg = e.message ?? "";
-
-    // WorkOS returns `invalid_grant` when the code is expired, already used,
-    // or the code_verifier does not match the original code_challenge.
-    if (
-      errCode === "invalid_grant" ||
-      /invalid.grant/i.test(errMsg) ||
-      errCode === "invalid_credentials" ||
-      /invalid.credentials/i.test(errMsg)
-    ) {
-      return errorResponse(
-        401,
-        "INVALID_GRANT",
-        "The authorization code is invalid, expired, or the code_verifier does not match.",
-        origin,
-      );
-    }
-
-    if (errCode === "rate_limit_exceeded" || /rate.limit/i.test(errMsg)) {
-      return errorResponse(
-        429,
-        "RATE_LIMITED",
-        "Too many token exchange attempts. Please wait a moment and try again.",
-        origin,
-      );
-    }
-
     console.error(
-      "[api/auth/token] WorkOS authenticateWithCode failed:",
-      errMsg,
+      "[api/auth/token] Unexpected error during token exchange:",
+      err,
     );
     return errorResponse(
       502,

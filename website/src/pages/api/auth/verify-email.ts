@@ -2,17 +2,15 @@ export const prerender = false;
 
 import type { APIRoute } from "astro";
 import {
-  workos,
-  WORKOS_CLIENT_ID,
-  WORKOS_COOKIE_PASSWORD,
-  SESSION_COOKIE,
+  createSupabaseServerClient,
   POST_LOGIN_ROUTE,
-  baseCookieOptions,
   toSafeUser,
-} from "../../../lib/workos";
+  type SafeUser,
+} from "../../../lib/supabase";
 
 interface VerifyRequestBody {
   code?: unknown;
+  email?: unknown;
   pendingAuthenticationToken?: unknown;
 }
 
@@ -23,12 +21,7 @@ interface ApiError {
 
 interface VerifySuccess {
   ok: true;
-  user: {
-    id: string;
-    email: string;
-    firstName: string | null;
-    lastName: string | null;
-  };
+  user: SafeUser;
   redirectTo: string;
 }
 
@@ -41,7 +34,9 @@ function json(body: VerifyResponse, status: number): Response {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, cookies, url } = context;
+
   let parsed: unknown;
   try {
     parsed = await request.json();
@@ -55,20 +50,25 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  const { code, pendingAuthenticationToken } = (parsed ??
+  const { code, email, pendingAuthenticationToken } = (parsed ??
     {}) as VerifyRequestBody;
 
-  if (
-    typeof pendingAuthenticationToken !== "string" ||
-    pendingAuthenticationToken.trim().length === 0
-  ) {
+  const resolvedEmail =
+    (typeof email === "string" && email.trim()) ||
+    (typeof pendingAuthenticationToken === "string" &&
+      pendingAuthenticationToken.includes("@") &&
+      pendingAuthenticationToken.trim()) ||
+    url.searchParams.get("email") ||
+    "";
+
+  if (!resolvedEmail) {
     return json(
       {
         ok: false,
         error: {
           code: "INVALID_BODY",
           message:
-            "Missing authentication token. Please sign in again to restart verification.",
+            "Missing email address. Please sign in again to restart verification.",
         },
       },
       400,
@@ -88,67 +88,130 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  try {
-    const authRes =
-      await workos.userManagement.authenticateWithEmailVerification({
-        clientId: WORKOS_CLIENT_ID,
-        code: code.trim(),
-        pendingAuthenticationToken: pendingAuthenticationToken.trim(),
-        session: {
-          sealSession: true,
-          cookiePassword: WORKOS_COOKIE_PASSWORD,
-        },
-      });
+  const normalizedEmail = resolvedEmail.trim().toLowerCase();
+  const token = code.trim();
 
-    const res = json(
+  try {
+    const supabase = createSupabaseServerClient(cookies, request);
+
+    // 1. Attempt verification with 'signup' OTP type
+    let { data, error } = await supabase.auth.verifyOtp({
+      email: normalizedEmail,
+      token,
+      type: "signup",
+    });
+
+    // 2. If 'signup' fails, attempt fallback to 'email' (email confirmation)
+    if (error && !data?.user) {
+      const emailRetry = await supabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token,
+        type: "email",
+      });
+      if (!emailRetry.error && emailRetry.data?.user) {
+        data = emailRetry.data;
+        error = null;
+      }
+    }
+
+    // 3. If 'email' fails, attempt fallback to 'magiclink'
+    if (error && !data?.user) {
+      const magicRetry = await supabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token,
+        type: "magiclink",
+      });
+      if (!magicRetry.error && magicRetry.data?.user) {
+        data = magicRetry.data;
+        error = null;
+      }
+    }
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      const errCode = error.code ?? "";
+
+      console.error(
+        "[api/auth/verify-email] verifyOtp error:",
+        error.message,
+        `code: ${errCode}`,
+        `status: ${error.status}`,
+      );
+
+      // Only mark as strictly EXPIRED if error code specifically indicates expired
+      if (errCode === "otp_expired" || errCode === "token_expired") {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "EXPIRED_CODE",
+              message:
+                "The verification code has expired. Please sign in again to receive a new code.",
+            },
+          },
+          410,
+        );
+      }
+
+      // Supabase returns "Token has expired or is invalid" for general code mismatches
+      if (
+        errCode === "bad_code" ||
+        errCode === "otp_invalid" ||
+        errCode === "validation_failed" ||
+        msg.includes("invalid") ||
+        msg.includes("incorrect") ||
+        msg.includes("token has expired or is invalid") ||
+        error.status === 400 ||
+        error.status === 401
+      ) {
+        return json(
+          {
+            ok: false,
+            error: {
+              code: "INVALID_CODE",
+              message:
+                "The verification code is incorrect. Please check and try again.",
+            },
+          },
+          400,
+        );
+      }
+
+      return json(
+        {
+          ok: false,
+          error: {
+            code: "API_ERROR",
+            message: "Verification failed. Please try again.",
+          },
+        },
+        502,
+      );
+    }
+
+    if (!data?.user) {
+      return json(
+        {
+          ok: false,
+          error: {
+            code: "API_ERROR",
+            message: "Verification failed. User not found.",
+          },
+        },
+        502,
+      );
+    }
+
+    return json(
       {
         ok: true,
-        user: toSafeUser(authRes.user),
+        user: toSafeUser(data.user),
         redirectTo: POST_LOGIN_ROUTE,
       },
       200,
     );
-
-    res.headers.append(
-      "Set-Cookie",
-      `${SESSION_COOKIE}=${authRes.sealedSession}; Path=/; HttpOnly; SameSite=Lax${
-        baseCookieOptions().secure ? "; Secure" : ""
-      }; Max-Age=40000000`,
-    );
-    return res;
   } catch (err) {
-    const e = err as { code?: string; message?: string };
-    const errCode = e.code ?? "";
-    const msg = e.message ?? "";
-
-    if (errCode === "email_verification_code_invalid" || /invalid/i.test(msg)) {
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "INVALID_CODE",
-            message:
-              "The verification code is incorrect. Please check and try again.",
-          },
-        },
-        400,
-      );
-    }
-
-    if (errCode === "email_verification_code_expired" || /expired/i.test(msg)) {
-      return json(
-        {
-          ok: false,
-          error: {
-            code: "EXPIRED_CODE",
-            message:
-              "The verification code has expired. Please sign in again to receive a new code.",
-          },
-        },
-        410,
-      );
-    }
-
+    console.error("[api/auth/verify-email] Unexpected error:", err);
     return json(
       {
         ok: false,
