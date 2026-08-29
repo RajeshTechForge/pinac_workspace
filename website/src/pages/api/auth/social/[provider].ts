@@ -3,7 +3,9 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 import {
   createSupabaseServerClient,
+  SUPABASE_URL,
   APP_BASE_URL,
+  DESKTOP_CALLBACK_URI,
   ALLOWED_OAUTH_PROVIDERS,
   type AllowedProvider,
 } from "../../../../lib/supabase";
@@ -14,7 +16,7 @@ interface ApiError {
 }
 
 export const GET: APIRoute = async (context) => {
-  const { params, redirect, cookies, request } = context;
+  const { params, redirect, cookies, request, url } = context;
   const provider = params.provider;
 
   if (
@@ -31,6 +33,28 @@ export const GET: APIRoute = async (context) => {
   }
 
   const allowed = provider as AllowedProvider;
+  const isDesktop =
+    url.searchParams.get("desktop") === "1" ||
+    url.searchParams.get("desktop") === "true";
+  const codeChallenge = url.searchParams.get("code_challenge");
+  const state = url.searchParams.get("state") ?? "";
+
+  // If initiated from desktop flow with PKCE code_challenge:
+  if (isDesktop && codeChallenge) {
+    const oauthParams = new URLSearchParams({
+      provider: allowed,
+      code_challenge: codeChallenge,
+      code_challenge_method: "s256",
+      redirect_to: DESKTOP_CALLBACK_URI,
+      state,
+    });
+    return redirect(
+      `${SUPABASE_URL}/auth/v1/authorize?${oauthParams.toString()}`,
+      302,
+    );
+  }
+
+  // Standard web browser OAuth:
   const redirectUri = `${APP_BASE_URL}/api/auth/callback`;
 
   try {

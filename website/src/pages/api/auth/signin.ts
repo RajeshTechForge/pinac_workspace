@@ -3,7 +3,9 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 import {
   createSupabaseServerClient,
+  createDesktopTransferCode,
   POST_LOGIN_ROUTE,
+  DESKTOP_CALLBACK_URI,
   toSafeUser,
   type SafeUser,
 } from "../../../lib/supabase";
@@ -11,6 +13,9 @@ import {
 interface SigninRequestBody {
   email?: unknown;
   password?: unknown;
+  desktop?: unknown;
+  code_challenge?: unknown;
+  state?: unknown;
 }
 
 interface ApiError {
@@ -59,7 +64,8 @@ export const POST: APIRoute = async (context) => {
     );
   }
 
-  const { email, password } = (parsed ?? {}) as SigninRequestBody;
+  const { email, password, desktop, code_challenge, state } = (parsed ??
+    {}) as SigninRequestBody;
 
   if (typeof email !== "string" || !EMAIL_RE.test(email.trim())) {
     return json(
@@ -182,10 +188,40 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
+    const safeUser = toSafeUser(data.user);
+
+    // If initiated from desktop flow with PKCE code_challenge:
+    if (
+      desktop === true &&
+      typeof code_challenge === "string" &&
+      code_challenge.trim().length > 0 &&
+      data.session
+    ) {
+      const transferCode = await createDesktopTransferCode({
+        code_challenge: code_challenge.trim(),
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        user: safeUser,
+      });
+
+      const stateStr = typeof state === "string" ? state : "";
+      const desktopRedirect = `${DESKTOP_CALLBACK_URI}?code=${encodeURIComponent(transferCode)}&state=${encodeURIComponent(stateStr)}`;
+
+      return json(
+        {
+          ok: true,
+          user: safeUser,
+          redirectTo: desktopRedirect,
+        },
+        200,
+      );
+    }
+
+    // Standard web login:
     return json(
       {
         ok: true,
-        user: toSafeUser(data.user),
+        user: safeUser,
         redirectTo: POST_LOGIN_ROUTE,
       },
       200,

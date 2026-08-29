@@ -48,8 +48,25 @@ function readInitialMessage(): {
   return { message: null, variant: "error" };
 }
 
+function readDesktopParams(): {
+  isDesktop: boolean;
+  codeChallenge: string;
+  state: string;
+} {
+  if (typeof window === "undefined")
+    return { isDesktop: false, codeChallenge: "", state: "" };
+  const params = new URLSearchParams(window.location.search);
+  const isDesktop =
+    params.get("desktop") === "1" || params.get("desktop") === "true";
+  const codeChallenge = params.get("code_challenge") ?? "";
+  const state = params.get("state") ?? "";
+  return { isDesktop, codeChallenge, state };
+}
+
 export function SignInForm() {
   const initialMsg = readInitialMessage();
+  const desktopParams = readDesktopParams();
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,8 +79,16 @@ export function SignInForm() {
   );
 
   const handleSocial = (provider: "google" | "github") => {
-    // Top-level navigation; the server handles OAuth redirect. No fetch needed.
-    window.location.href = `/api/auth/social/${provider}`;
+    if (desktopParams.isDesktop && desktopParams.codeChallenge) {
+      const q = new URLSearchParams({
+        desktop: "1",
+        code_challenge: desktopParams.codeChallenge,
+        state: desktopParams.state,
+      });
+      window.location.href = `/api/auth/social/${provider}?${q.toString()}`;
+    } else {
+      window.location.href = `/api/auth/social/${provider}`;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,10 +98,17 @@ export function SignInForm() {
     setSuccessBanner(null);
     setSubmitting(true);
     try {
+      const payload: Record<string, unknown> = { email, password };
+      if (desktopParams.isDesktop && desktopParams.codeChallenge) {
+        payload.desktop = true;
+        payload.code_challenge = desktopParams.codeChallenge;
+        payload.state = desktopParams.state;
+      }
+
       const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json().catch(() => null)) as
         | { ok: true; redirectTo: string }
@@ -115,7 +147,9 @@ export function SignInForm() {
           Welcome back
         </h1>
         <p className="text-sm text-star-300">
-          Enter your credentials to access your workspace
+          {desktopParams.isDesktop
+            ? "Sign in to continue to Pinac Workspace"
+            : "Enter your credentials to access your workspace"}
         </p>
       </div>
 

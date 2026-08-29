@@ -1,8 +1,9 @@
 /**
  * desktop-login.ts — PKCE relay route for the Pinac-Workspace desktop app.
  *
- * The `redirect_to` parameter in Supabase authorize points to /api/auth/desktop-callback,
- * which hands the authorization code back to the desktop app via the pinac:// scheme.
+ * If a specific social provider is requested (e.g. ?provider=github), it forwards
+ * directly to Supabase OAuth. Otherwise, it routes to the website's branded Sign-In page
+ * with desktop PKCE parameters attached, enabling Email/Password, Google, and GitHub login.
  */
 
 export const prerender = false;
@@ -103,40 +104,30 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     );
   }
 
-  // ── Provider selection ───────────────────────────────────────────────────
-  let provider: AllowedProvider = "google";
+  // ── Direct OAuth provider requested ───────────────────────────────────────
   if (
     typeof requestedProvider === "string" &&
     ALLOWED_OAUTH_PROVIDERS.includes(requestedProvider as AllowedProvider)
   ) {
-    provider = requestedProvider as AllowedProvider;
-  }
-
-  // ── Build the Supabase GoTrue PKCE authorization URL ─────────────────────
-  let authUrl: string;
-  try {
     const params = new URLSearchParams({
-      provider,
+      provider: requestedProvider,
       code_challenge: codeChallenge,
       code_challenge_method: "s256",
       redirect_to: DESKTOP_CALLBACK_URI,
       state,
     });
-
-    authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(
-      "[desktop-login] Authorization URL generation failed:",
-      message,
-    );
-    return errorPage(
-      502,
-      "Authorization Error",
-      "Could not start the sign-in process. Please try again in a moment.",
+    return redirect(
+      `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`,
+      302,
     );
   }
 
-  // Redirect into the Supabase-hosted / OAuth provider sign-in flow.
-  return redirect(authUrl, 302);
+  // ── Default: Route to the branded Sign-In page with desktop parameters ────
+  const signinParams = new URLSearchParams({
+    desktop: "1",
+    code_challenge: codeChallenge,
+    state,
+  });
+
+  return redirect(`/auth/sign-in?${signinParams.toString()}`, 302);
 };

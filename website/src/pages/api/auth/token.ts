@@ -3,8 +3,8 @@
  *
  * The desktop app POSTs { code, code_verifier } here after receiving
  * the authorization code via the pinac:// deep-link callback. This endpoint
- * exchanges the code with Supabase GoTrue so that the token exchange follows
- * the correct PKCE architecture and returns the expected contract.
+ * exchanges the code with Supabase GoTrue (or verifies the signed desktop transfer code)
+ * so that the token exchange follows the correct PKCE architecture and returns the expected contract.
  */
 
 export const prerender = false;
@@ -13,6 +13,7 @@ import type { APIRoute } from "astro";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
+  verifyDesktopTransferCode,
   toSafeUser,
 } from "../../../lib/supabase";
 
@@ -150,7 +151,42 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  // Exchange code + code_verifier with Supabase GoTrue PKCE endpoint
+  const normalizedCode = code.trim();
+  const normalizedVerifier = code_verifier.trim();
+
+  // ── 1. Check if the code is an Email/Password desktop transfer code ───────
+  if (normalizedCode.startsWith("pkce_transfer.")) {
+    const verified = await verifyDesktopTransferCode(
+      normalizedCode,
+      normalizedVerifier,
+    );
+
+    if (!verified) {
+      return errorResponse(
+        401,
+        "INVALID_GRANT",
+        "The authorization code is invalid, expired, or the code_verifier does not match.",
+        origin,
+      );
+    }
+
+    const body: TokenSuccess = {
+      ok: true,
+      access_token: verified.access_token,
+      refresh_token: verified.refresh_token,
+      expires_in: 3600,
+      user: {
+        id: verified.user.id,
+        email: verified.user.email,
+        first_name: verified.user.firstName,
+        last_name: verified.user.lastName,
+      },
+    };
+
+    return json(body, 200, origin);
+  }
+
+  // ── 2. Exchange code + verifier with Supabase GoTrue PKCE endpoint ────────
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
       method: "POST",
@@ -159,8 +195,8 @@ export const POST: APIRoute = async ({ request }) => {
         apikey: SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
-        auth_code: code.trim(),
-        code_verifier: code_verifier.trim(),
+        auth_code: normalizedCode,
+        code_verifier: normalizedVerifier,
       }),
     });
 

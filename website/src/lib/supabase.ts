@@ -167,3 +167,126 @@ export function createSupabaseAdminClient(): SupabaseClient {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Desktop PKCE Transfer Token Helpers (for Email/Password desktop auth)
+// ---------------------------------------------------------------------------
+
+async function getSigningKey(): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey(
+    "raw",
+    enc.encode(supabaseAnonKey),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) {
+    base64 += "=";
+  }
+  const binary = atob(base64);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export async function createDesktopTransferCode(payload: {
+  code_challenge: string;
+  access_token: string;
+  refresh_token: string;
+  user: SafeUser;
+}): Promise<string> {
+  const enc = new TextEncoder();
+  const dataStr = JSON.stringify({
+    ...payload,
+    exp: Date.now() + 120_000, // 2 minutes validity
+  });
+  const dataBytes = enc.encode(dataStr);
+  const dataB64 = base64UrlEncode(dataBytes);
+
+  const key = await getSigningKey();
+  const signatureBytes = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, enc.encode(dataB64)),
+  );
+  const sigB64 = base64UrlEncode(signatureBytes);
+
+  return `pkce_transfer.${dataB64}.${sigB64}`;
+}
+
+export async function verifyDesktopTransferCode(
+  code: string,
+  codeVerifier: string,
+): Promise<{
+  access_token: string;
+  refresh_token: string;
+  user: SafeUser;
+} | null> {
+  if (!code.startsWith("pkce_transfer.")) return null;
+
+  const parts = code.split(".");
+  if (parts.length !== 3) return null;
+
+  const [, dataB64, sigB64] = parts;
+  const enc = new TextEncoder();
+
+  try {
+    // 1. Verify HMAC Signature
+    const key = await getSigningKey();
+    const sigBytes = base64UrlDecode(sigB64);
+    const isValidSig = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      sigBytes,
+      enc.encode(dataB64),
+    );
+    if (!isValidSig) return null;
+
+    // 2. Decode payload
+    const dataBytes = base64UrlDecode(dataB64);
+    const dataStr = new TextDecoder().decode(dataBytes);
+    const payload = JSON.parse(dataStr) as {
+      code_challenge: string;
+      access_token: string;
+      refresh_token: string;
+      user: SafeUser;
+      exp: number;
+    };
+
+    // 3. Verify expiry
+    if (Date.now() > payload.exp) return null;
+
+    // 4. Verify code_verifier against code_challenge (RFC 7636 S256)
+    const verifierBytes = enc.encode(codeVerifier);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", verifierBytes);
+    const computedChallenge = base64UrlEncode(new Uint8Array(hashBuffer));
+
+    if (computedChallenge !== payload.code_challenge) return null;
+
+    return {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token,
+      user: payload.user,
+    };
+  } catch (err) {
+    console.error("[supabase.ts] verifyDesktopTransferCode error:", err);
+    return null;
+  }
+}
