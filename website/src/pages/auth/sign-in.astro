@@ -1,8 +1,42 @@
 ---
 import AuthLayout from "../../layouts/AuthLayout.astro";
 import { SignInForm } from "../../components/auth/SignInForm";
+import {
+  createSupabaseServerClient,
+  createDesktopTransferCode,
+  DESKTOP_CALLBACK_URI,
+} from "../../lib/supabase";
+
+const isDesktop =
+  Astro.url.searchParams.get("desktop") === "1" ||
+  Astro.url.searchParams.get("desktop") === "true";
+const codeChallenge = Astro.url.searchParams.get("code_challenge");
+const state = Astro.url.searchParams.get("state") ?? "";
+
+if (Astro.locals.user) {
+  if (isDesktop && codeChallenge) {
+    const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      const transferCode = await createDesktopTransferCode({
+        code_challenge: codeChallenge,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        user: Astro.locals.user,
+      });
+
+      const desktopCallback = `${DESKTOP_CALLBACK_URI}?code=${encodeURIComponent(transferCode)}&state=${encodeURIComponent(state)}`;
+      return Astro.redirect(desktopCallback, 302);
+    }
+  } else if (!isDesktop) {
+    return Astro.redirect("/dashboard", 302);
+  }
+}
 ---
 
 <AuthLayout title="Login - Pinac Workspace">
-    <SignInForm client:load />
+  <SignInForm client:load />
 </AuthLayout>

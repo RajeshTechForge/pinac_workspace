@@ -1,15 +1,22 @@
 /**
  * desktop-login.ts — PKCE relay route for the Pinac-Workspace desktop app.
  *
- * If a specific social provider is requested (e.g. ?provider=github), it forwards
- * directly to Supabase OAuth. Otherwise, it routes to the website's branded Sign-In page
- * with desktop PKCE parameters attached, enabling Email/Password, Google, and GitHub login.
+ * SSO / Active Session Handling:
+ * If the user is ALREADY logged in on the browser, it seamlessly generates a PKCE
+ * transfer code from their existing session and redirects to desktop-callback immediately.
+ *
+ * If not logged in:
+ * - If a specific social provider is requested (e.g. ?provider=github), forwards directly to OAuth.
+ * - Otherwise, routes to the branded Sign-In page with desktop parameters attached.
  */
 
 export const prerender = false;
 
 import type { APIRoute } from "astro";
 import {
+  createSupabaseServerClient,
+  createDesktopTransferCode,
+  toSafeUser,
   SUPABASE_URL,
   DESKTOP_CALLBACK_URI,
   ALLOWED_OAUTH_PROVIDERS,
@@ -47,16 +54,15 @@ function errorPage(status: number, title: string, detail: string): Response {
   });
 }
 
-// RFC 7636 §4.2: code_challenge is BASE64URL, 43–128 chars of [A-Za-z0-9\-._~]
 const CODE_CHALLENGE_RE = /^[A-Za-z0-9\-._~]{43,128}$/;
-// state: we accept 40–128 hex/base64url chars (desktop sends 64 hex chars)
 const STATE_RE = /^[A-Za-z0-9\-._~+/]{40,128}$/;
 
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
-export const GET: APIRoute = async ({ url, redirect }) => {
+export const GET: APIRoute = async (context) => {
+  const { url, redirect, cookies, request } = context;
   const codeChallenge = url.searchParams.get("code_challenge");
   const codeChallengeMethod = url.searchParams.get("code_challenge_method");
   const state = url.searchParams.get("state");
@@ -102,6 +108,28 @@ export const GET: APIRoute = async ({ url, redirect }) => {
       "Malformed state",
       "The <code>state</code> parameter has an unexpected format.",
     );
+  }
+
+  // ── Single Sign-On: Check if user already has an active session in browser ─
+  try {
+    const supabase = createSupabaseServerClient(cookies, request);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user && session?.access_token) {
+      const transferCode = await createDesktopTransferCode({
+        code_challenge: codeChallenge,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        user: toSafeUser(session.user),
+      });
+
+      const desktopCallback = `${DESKTOP_CALLBACK_URI}?code=${encodeURIComponent(transferCode)}&state=${encodeURIComponent(state)}`;
+      return redirect(desktopCallback, 302);
+    }
+  } catch (err) {
+    console.error("[desktop-login] Session check error:", err);
   }
 
   // ── Direct OAuth provider requested ───────────────────────────────────────
