@@ -23,7 +23,7 @@ export const POST_LOGIN_ROUTE: string =
   import.meta.env.POST_LOGIN_ROUTE ?? "/dashboard";
 
 /** Configuration for the native desktop client callback URI */
-export const DESKTOP_CALLBACK_URI = `${APP_BASE_URL}/api/auth/desktop-callback`;
+export const DESKTOP_CALLBACK_URI = `${APP_BASE_URL}/auth/desktop-callback`;
 
 /** Routes that require an authenticated session. */
 export const PROTECTED_ROUTE_PREFIXES: readonly string[] = [

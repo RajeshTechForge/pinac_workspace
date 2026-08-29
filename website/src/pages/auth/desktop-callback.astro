@@ -1,0 +1,68 @@
+---
+export const prerender = false;
+
+import "../../styles/global.css";
+import {
+  DesktopCallbackCard,
+  type AuthCallbackError,
+} from "../../components/auth/DesktopCallbackCard";
+
+const code = Astro.url.searchParams.get("code");
+const state = Astro.url.searchParams.get("state");
+const oauthError = Astro.url.searchParams.get("error");
+const oauthErrorDesc = Astro.url.searchParams.get("error_description");
+
+let error: AuthCallbackError | null = null;
+let deepLinkUrl: string | null = null;
+
+if (oauthError) {
+  error = {
+    title: "Authentication Failed",
+    message:
+      oauthErrorDesc ||
+      "The authentication provider returned an error while attempting to sign in.",
+    code: oauthError,
+  };
+} else if (!code || !state) {
+  error = {
+    title: "Missing Parameters",
+    message:
+      "The callback URL is missing the required authentication parameters (code or state). Please restart sign-in from Pinac Workspace.",
+    code: "MISSING_PARAMETERS",
+  };
+} else {
+  deepLinkUrl = `pinac://auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+}
+
+const pageTitle = error
+  ? `${error.title} — Pinac Workspace`
+  : "Signing you in — Pinac Workspace";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {deepLinkUrl && <meta http-equiv="refresh" content={`1;url=${deepLinkUrl}`} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{pageTitle}</title>
+  </head>
+  <body class="min-h-screen bg-void-800 font-sans text-star-200 antialiased selection:bg-nebula/20 selection:text-star-100">
+    <div class="bg-system" aria-hidden="true">
+      <div class="cosmic-bg">
+        <div class="nebula-orb primary"></div>
+        <div class="nebula-orb secondary"></div>
+        <div class="nebula-orb tertiary"></div>
+      </div>
+      <div class="starfield"></div>
+      <div class="space-grid"></div>
+      <div class="noise-overlay"></div>
+    </div>
+
+    <!-- Centered Content Wrapper -->
+    <main class="relative z-10 min-h-screen flex flex-col items-center justify-center p-inline minor-xs:p-block">
+      <DesktopCallbackCard client:load deepLinkUrl={deepLinkUrl} error={error} />
+    </main>
+  </body>
+</html>

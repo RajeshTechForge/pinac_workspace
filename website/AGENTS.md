@@ -66,6 +66,8 @@ Pinac-Workspace's official website is a production-grade marketing & content web
 ├── components
 │   ├── auth
 │   │   ├── Button.tsx
+│   │   ├── DesktopCallbackCard.tsx
+│   │   ├── EmailVerificationForm.tsx
 │   │   ├── Input.tsx
 │   │   ├── SignInForm.tsx
 │   │   └── SignUpForm.tsx
@@ -92,12 +94,12 @@ Pinac-Workspace's official website is a production-grade marketing & content web
 │   │       ├── social
 │   │       │   └── [provider].ts
 │   │       ├── callback.ts
-│   │       ├── desktop-callback.ts
 │   │       ├── signin.ts
 │   │       ├── signout.ts
 │   │       ├── signup.ts
 │   │       └── verify-email.ts
 │   ├── auth
+│   │   ├── desktop-callback.astro
 │   │   ├── sign-in.astro
 │   │   ├── sign-up.astro
 │   │   └── verify-email.astro
