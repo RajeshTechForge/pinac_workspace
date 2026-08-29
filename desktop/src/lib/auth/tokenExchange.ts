@@ -8,6 +8,9 @@ export interface WebsiteTokenResponse {
   readonly user: {
     readonly id: string;
     readonly email: string;
+    readonly firstName?: string | null;
+    readonly lastName?: string | null;
+    readonly profilePictureUrl?: string | null;
   };
   /** Seconds until `accessToken` expires. Absent if the proxy omits it. */
   readonly accessTokenExpiresIn?: number;
@@ -133,9 +136,9 @@ export async function exchangeCodeForTokens(
   }
 
   // Validate the shape of the success response.
-  const accessToken = raw["access_token"];
-  const refreshToken = raw["refresh_token"];
-  const expiresIn = raw["expires_in"];
+  const accessToken = raw["access_token"] as string | undefined;
+  const refreshToken = raw["refresh_token"] as string | undefined;
+  const expiresIn = raw["expires_in"] as number | undefined;
   const user = raw["user"] as Record<string, unknown> | undefined;
 
   if (
@@ -154,6 +157,38 @@ export async function exchangeCodeForTokens(
     };
   }
 
+  const rawFirstName =
+    (user["first_name"] as string | undefined) ??
+    (user["firstName"] as string | undefined) ??
+    (raw["first_name"] as string | undefined) ??
+    (raw["firstName"] as string | undefined) ??
+    null;
+
+  const rawLastName =
+    (user["last_name"] as string | undefined) ??
+    (user["lastName"] as string | undefined) ??
+    (raw["last_name"] as string | undefined) ??
+    (raw["lastName"] as string | undefined) ??
+    null;
+
+  const rawProfilePicture =
+    (user["profile_picture_url"] as string | undefined) ??
+    (user["profilePictureUrl"] as string | undefined) ??
+    (user["avatar_url"] as string | undefined) ??
+    (user["picture"] as string | undefined) ??
+    (raw["profile_picture_url"] as string | undefined) ??
+    (raw["profilePictureUrl"] as string | undefined) ??
+    null;
+
+  let firstName = rawFirstName;
+  let lastName = rawLastName;
+
+  if (!firstName && typeof user["name"] === "string" && user["name"].trim()) {
+    const parts = user["name"].trim().split(/\s+/);
+    firstName = parts[0] ?? null;
+    lastName = parts.length > 1 ? parts.slice(1).join(" ") : null;
+  }
+
   return {
     ok: true,
     data: {
@@ -162,6 +197,9 @@ export async function exchangeCodeForTokens(
       user: {
         id: user["id"] as string,
         email: user["email"] as string,
+        firstName,
+        lastName,
+        profilePictureUrl: rawProfilePicture,
       },
       accessTokenExpiresIn:
         typeof expiresIn === "number" ? expiresIn : undefined,

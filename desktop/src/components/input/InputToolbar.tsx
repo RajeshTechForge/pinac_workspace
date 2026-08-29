@@ -9,10 +9,6 @@ type InputToolbarProps = {
   isStreaming: boolean;
 };
 
-/** Estimates token count from raw text using a word-count heuristic. */
-function estimateTokens(text: string): number {
-  return Math.round(text.split(/\s+/).filter(Boolean).length * 1.3);
-}
 
 export default function InputToolbar({
   text,

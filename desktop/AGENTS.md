@@ -89,47 +89,105 @@ Code is not done until it can be reviewed, tested, and deployed as-is without mo
 ## File Structure
 
 ```
-├── src
-│   ├── components
-│   │   ├── auth/
-│   │   ├── chat/
-│   │   ├── command/
-│   │   ├── input/
-│   │   ├── layout/
-│   │   ├── settings/
-│   │   ├── sidebar/
-│   │   ├── ui/
-│   │   └── LoginButton.example.tsx
-│   ├── context/
-│   ├── hooks/
-│   ├── lib
-│   │   └── auth/
-│   ├── mocks/
-│   ├── services
-│   │   ├── apiKey.ts
-│   │   ├── config.ts
-│   │   ├── conversation.ts
-│   │   ├── llm.ts
-│   │   └── llmSettings.ts
-│   ├── types/
-│   ├── App.tsx
-│   ├── main.css
-│   ├── main.tsx
-│   └── vite-env.d.ts
-├── src-tauri
-│   ├── capabilities
-│   │   └── default.json
-│   ├── icons/
-│   ├── src
-│   │   ├── db/
-│   │   ├── llm/
-│   │   ├── lib.rs
-│   │   ├── main.rs
-│   │   └── secure_storage.rs
-│   ├── Cargo.toml
-│   ├── config.toml
-│   └── tauri.conf.json
-├── index.html/
-├── package.json/
-└── vite.config.ts
+.
+├── src-tauri/                  # Tauri backend
+│   ├─ capabilities/
+│   │  └─ default.json
+│   ├─ src/
+│   │  ├─ db/
+│   │  │  ├─ commands.rs
+│   │  │  ├─ conversation.rs
+│   │  │  ├─ init.rs
+│   │  │  ├─ mod.rs
+│   │  │  └─ types.rs
+│   │  ├─ llm/
+│   │  │  ├─ client.rs
+│   │  │  ├─ commands.rs
+│   │  │  ├─ mod.rs
+│   │  │  └─ types.rs
+│   │  ├─ lib.rs
+│   │  ├─ main.rs
+│   │  └─ secure_storage.rs
+│   ├─ cargo.toml
+│   ├─ config.toml
+│   └─ tauri.conf.json
+│
+├── src/                              # React-TypeScript frontend
+│   ├─ components/
+│   │  ├─ auth/
+│   │  │  ├─ AuthGate.tsx
+│   │  │  ├─ AuthScreen.tsx
+│   │  │  ├─ index.ts
+│   │  │  └─ LoadingScreen.tsx
+│   │  ├─ chat/
+│   │  │  ├─ ChatArea.tsx
+│   │  │  ├─ CodeBlock.tsx
+│   │  │  ├─ EmptyState.tsx
+│   │  │  ├─ MarkdownContent.tsx
+│   │  │  ├─ MessageBubble.tsx
+│   │  │  ├─ MessageList.tsx
+│   │  │  ├─ MessageMeta.tsx
+│   │  │  ├─ StreamingIndicator.tsx
+│   │  │  └─ ThinkingBlock.tsx
+│   │  ├─ command/
+│   │  │  ├─ CommandItem.tsx
+│   │  │  └─ CommandPalette.tsx
+│   │  ├─ input/
+│   │  │  ├─ InputArea.tsx
+│   │  │  ├─ InputToolbar.tsx
+│   │  │  ├─ ModelPicker.tsx
+│   │  │  ├─ PromptInput.tsx
+│   │  │  └─ ThinkingPicker.tsx
+│   │  ├─ layout/
+│   │  │  ├─ AppShell.tsx
+│   │  │  ├─ ResizeHandle.tsx
+│   │  │  ├─ Sidebar.tsx
+│   │  │  └─ TitleBar.tsx
+│   │  ├─ settings/
+│   │  │  ├─ LLMTab.tsx
+│   │  │  ├─ ProfileTab.tsx
+│   │  │  └─ SettingsPanel.tsx
+│   │  ├─ sidebar/
+│   │  │  ├─ ConversationItem.tsx
+│   │  │  ├─ ConversationList.tsx
+│   │  │  ├─ SidebarFooter.tsx
+│   │  │  └─ SidebarHeader.tsx
+│   │  └─ ui/
+│   │     ├─ Badge.tsx
+│   │     ├─ Button.tsx
+│   │     ├─ Divider.tsx
+│   │     ├─ ScrollArea.tsx
+│   │     ├─ Select.tsx
+│   │     └─ Tooltip.tsx
+│   ├─ context/
+│   │  ├─ AuthContext.tsx
+│   │  └─ ChatContext.tsx
+│   ├─ hooks/
+│   │  ├─ useChat.ts
+│   │  ├─ useKeyboardShortcuts.ts
+│   │  └─ useResizablePanel.ts
+│   ├─ lib/
+│   │  └─ auth/
+│   │     ├─ authFlow.ts
+│   │     ├─ deepLinkHandler.ts
+│   │     ├─ index.ts
+│   │     ├─ pkce.ts
+│   │     ├─ secureStorage.ts
+│   │     ├─ session.ts
+│   │     └─ tokenExchange.ts
+│   ├─ mocks/                       # Mock UI for testing without Tauri
+│   ├─ services/
+│   │  ├─ apiKey.ts
+│   │  ├─ config.ts
+│   │  ├─ conversation.ts
+│   │  ├─ llm.ts
+│   │  └─ llmSettings.ts
+│   ├─ types/
+│   │  ├─ highlight.d.ts
+│   │  └─ index.ts
+│   ├─ App.tsx
+│   ├─ main.css
+│   └─ main.tsx
+├─ index.html
+└─ package.json
 ```

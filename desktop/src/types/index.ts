@@ -75,6 +75,9 @@ export type AppSettings = {
   fontSize: number;
   defaultModel: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
   email: string;
   apiKeySaved: boolean;
   temperature: number;

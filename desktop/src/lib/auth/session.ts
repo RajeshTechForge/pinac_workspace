@@ -32,8 +32,24 @@ interface JwtPayload {
   email?: string;
   sid?: string; // WorkOS session ID — used for server-side logout
   first_name?: string;
+  firstName?: string;
+  given_name?: string;
   last_name?: string;
+  lastName?: string;
+  family_name?: string;
+  name?: string;
   profile_picture_url?: string;
+  profilePictureUrl?: string;
+  picture?: string;
+  avatar_url?: string;
+  user?: {
+    first_name?: string;
+    firstName?: string;
+    last_name?: string;
+    lastName?: string;
+    profile_picture_url?: string;
+    profilePictureUrl?: string;
+  };
   exp?: number;
 }
 
@@ -81,14 +97,54 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!stored) return null;
 
   const payload = decodeJwtPayload(stored.accessToken);
-  if (!payload) return null;
+
+  // Extract first name: check stored value first, then JWT payload variants
+  let firstName = stored.firstName ?? null;
+  if (!firstName && payload) {
+    firstName =
+      payload.first_name ??
+      payload.firstName ??
+      payload.given_name ??
+      payload.user?.first_name ??
+      payload.user?.firstName ??
+      (payload.name ? payload.name.trim().split(/\s+/)[0] : null) ??
+      null;
+  }
+
+  // Extract last name: check stored value first, then JWT payload variants
+  let lastName = stored.lastName ?? null;
+  if (!lastName && payload) {
+    lastName =
+      payload.last_name ??
+      payload.lastName ??
+      payload.family_name ??
+      payload.user?.last_name ??
+      payload.user?.lastName ??
+      (payload.name && payload.name.trim().includes(" ")
+        ? payload.name.trim().split(/\s+/).slice(1).join(" ")
+        : null) ??
+      null;
+  }
+
+  // Extract profile picture: check stored value first, then JWT payload variants
+  let profilePictureUrl = stored.profilePictureUrl ?? null;
+  if (!profilePictureUrl && payload) {
+    profilePictureUrl =
+      payload.profile_picture_url ??
+      payload.profilePictureUrl ??
+      payload.picture ??
+      payload.avatar_url ??
+      payload.user?.profile_picture_url ??
+      payload.user?.profilePictureUrl ??
+      null;
+  }
 
   return {
     id: stored.userId,
     email: stored.userEmail,
-    firstName: payload.first_name ?? null,
-    lastName: payload.last_name ?? null,
-    profilePictureUrl: payload.profile_picture_url ?? null,
+    firstName,
+    lastName,
+    profilePictureUrl,
   };
 }
 

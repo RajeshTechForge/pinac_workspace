@@ -25,6 +25,9 @@ export interface StoredTokens {
   readonly expiresAt: number;
   readonly userId: string;
   readonly userEmail: string;
+  readonly firstName?: string | null;
+  readonly lastName?: string | null;
+  readonly profilePictureUrl?: string | null;
 }
 
 export async function saveTokens(tokens: StoredTokens): Promise<void> {

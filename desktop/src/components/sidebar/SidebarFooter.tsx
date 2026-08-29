@@ -19,22 +19,37 @@ import { useAuth } from "../../context/AuthContext";
 import Tooltip from "../ui/Tooltip";
 
 export default function SidebarFooter() {
-  const { dispatch } = useChatContext();
+  const { state, dispatch } = useChatContext();
   const { status, logout } = useAuth();
 
-  // Derive display name and initial from the authenticated user.
-  // AuthGate ensures SidebarFooter is never rendered while unauthenticated,
-  // but we guard defensively to satisfy TypeScript and avoid a runtime throw.
+  // Derive display name, initial, and avatar from the authenticated user or local settings.
   const user = status.kind === "authenticated" ? status.user : null;
-  const displayName = user ? (user.firstName ?? user.email) : "User";
+  const avatarUrl = user?.profilePictureUrl || state.settings.avatarUrl;
+
+  const displayName = user
+    ? user.firstName
+      ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+      : user.email
+    : state.settings.firstName
+      ? `${state.settings.firstName}${state.settings.lastName ? ` ${state.settings.lastName}` : ""}`
+      : state.settings.displayName || "User";
+
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="mt-auto border-t border-border px-3 py-2 flex items-center gap-2">
-      {/* User avatar — shows first letter of name or email */}
-      <div className="w-5 h-5 rounded-sm bg-surface-3 flex items-center justify-center text-[10px] font-mono text-text-muted shrink-0">
-        {initial}
-      </div>
+      {/* User avatar — shows profile picture or first letter of name / email */}
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={displayName}
+          className="w-5 h-5 rounded-sm object-cover shrink-0 border border-border"
+        />
+      ) : (
+        <div className="w-5 h-5 rounded-sm bg-surface-3 flex items-center justify-center text-[10px] font-mono text-text-muted shrink-0">
+          {initial}
+        </div>
+      )}
 
       {/* Display name — truncated to available space */}
       <span className="text-xs font-ui text-text-secondary truncate flex-1">

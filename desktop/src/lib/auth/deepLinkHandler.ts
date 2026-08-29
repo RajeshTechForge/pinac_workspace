@@ -25,6 +25,9 @@ export type DeepLinkAuthError =
 export interface AuthSuccessPayload {
   readonly userId: string;
   readonly userEmail: string;
+  readonly firstName?: string | null;
+  readonly lastName?: string | null;
+  readonly profilePictureUrl?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +149,9 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
       expiresAt: Date.now() + ((accessTokenExpiresIn ?? 300) - 30) * 1000,
       userId: user.id,
       userEmail: user.email,
+      firstName: user.firstName ?? null,
+      lastName: user.lastName ?? null,
+      profilePictureUrl: user.profilePictureUrl ?? null,
     });
   } catch (storageErr) {
     emitError({
@@ -159,7 +165,13 @@ async function handleDeepLinkUrl(rawUrl: string): Promise<void> {
   }
 
   // Step 8: Notify the UI of success.
-  emitSuccess({ userId: user.id, userEmail: user.email });
+  emitSuccess({
+    userId: user.id,
+    userEmail: user.email,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+    profilePictureUrl: user.profilePictureUrl ?? null,
+  });
 }
 
 // ---------------------------------------------------------------------------
