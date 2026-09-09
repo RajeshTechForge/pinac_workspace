@@ -19,7 +19,7 @@
     "@lobehub/icons": "^5.10.1",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
-    "astro": "^7.1.1",
+    "astro": "^7.3.2",
     "lucide-react": "^1.21.0",
     "motion": "^12.42.0",
     "react": "^19.2.7",
