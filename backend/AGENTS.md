@@ -105,18 +105,33 @@ Default to no comment. Comments are a last resort for code that cannot be made s
 My file-structure follows the "Plug-n-Play" architecture.
 
 ```
-src/nexus
-├── api/              # FastAPI app, routes, schemas, dependencies
-│   ├── app.py             # FastAPI app instance and startup events
-│   ├── dependencies.py    # Common dependencies
-│   └── routes/       # API route handlers
-├── config/           # Central & Unified Config Manager
-│   ├── config.toml        # Single source of truth for all config values
-│   └── config.py          # Config & secrets loading, validation and access utilities
-└── exceptions.py     # Custom exception classes
+src/
+└─ nexus/
+   ├─ api/
+   │  ├─ routes/
+   │  │  ├─ __init__.py
+   │  │  ├─ auth.py
+   │  │  ├─ health.py
+   │  │  └─ llm.py
+   │  ├─ app.py                  # FastAPI app instance and startup events
+   │  ├─ dependencies.py         # FastAPI Common dependencies
+   │  ├─ exception_handlers.py
+   │  └─ schemas.py
+   ├─ config/                    # Central & Unified Config Manager
+   │  ├─ __init__.py
+   │  ├─ config.py               # Config & secrets loading, validation
+   │  └─ config.toml             # Single source of truth for all config values
+   ├─ services/
+   │  └─ llm/
+   │     ├─ __init__.py
+   │     └─ schemas.py
+   └─ exceptions.py             # Custom exception classes
+
 .
+├── pyproject.toml
+│
 ├── .env              # DO NOT read or modify this file
-└── .env.example      # Environment variables)
+└── .env.example      # Environment variables
 ```
 
 > **IMPORTANT:** Never read or modify `.env` or `.env.local`. Use `.env.example` as the sole source of truth for environment variables.

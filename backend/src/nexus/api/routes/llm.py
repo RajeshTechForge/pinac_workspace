@@ -1,96 +1,70 @@
-"""LLM proxy routes for chat completion."""
+"""LLM proxy routes for BYOK chat completion."""
 
-from collections.abc import AsyncIterator
+from __future__ import annotations
+
+import logging
+from typing import cast
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from kitkat import LLMError
-from kitkat.service.byok import BYOKLLMService
+from kitkat import ProviderType
+from kitkat.core.enums import ByokProviderType  # noqa: TC002
 
 from nexus.api.schemas import ChatRequest, ChatResponse
-from nexus.exceptions import NexusError
-from nexus.services.llm.schemas import (
-    StreamChunkEvent,
-    StreamChunkSchema,
-    StreamErrorEvent,
-    StreamErrorPayload,
-)
+from nexus.services.llm.sse import byok_stream_generator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def _llm_error_to_sse(exc: LLMError) -> StreamErrorEvent:
-    """Convert a kitkat LLMError into a structured SSE error frame.
-
-    Args:
-        exc: The kitkat exception raised during inference.
-
-    Returns:
-        A :class:`StreamErrorEvent` with a machine-readable code, the
-        exception message, and an optional provider context in details.
-    """
-    details = {"provider": exc.provider} if getattr(exc, "provider", None) else None
-    return StreamErrorEvent(
-        error=StreamErrorPayload(
-            code=type(exc).__name__.upper(),
-            message=str(exc),
-            details=details,
-        )
-    )
-
-
-async def _byok_stream_generator(body: ChatRequest) -> AsyncIterator[bytes]:
-    """Yield SSE chunks from the provider, catching errors mid-stream."""
-    try:
-        async with BYOKLLMService(
-            provider_type=body.provider,
-            api_key=body.api_key,
-            model=body.model,
-        ) as svc:
-            request = body.to_llm_request()
-            async for chunk in svc.stream(request):
-                event = StreamChunkEvent(data=StreamChunkSchema.from_domain(chunk))
-                yield f"data: {event.model_dump_json()}\n\n".encode()
-
-    except LLMError as exc:
-        event = _llm_error_to_sse(exc)
-        yield f"data: {event.model_dump_json()}\n\n".encode()
-    except NexusError as exc:
-        event = StreamErrorEvent(
-            error=StreamErrorPayload(
-                code=exc.code,
-                message=exc.message,
-                details=exc.details,
-            )
-        )
-        yield f"data: {event.model_dump_json()}\n\n".encode()
-    except Exception:
-        event = StreamErrorEvent(
-            error=StreamErrorPayload(
-                code="INTERNAL_ERROR",
-                message="An unexpected error occurred during streaming.",
-            )
-        )
-        yield f"data: {event.model_dump_json()}\n\n".encode()
-
-
-@router.post("/chat")
-async def chat_completion(body: ChatRequest):
+@router.post("/chat", response_model=None)
+async def chat_completion(body: ChatRequest) -> ChatResponse | StreamingResponse:
     """Execute a BYOK chat completion request.
 
-    If stream=True, returns an SSE (Server-Sent Events) stream.
-    If stream=False, returns a standard ChatResponse JSON payload.
+    Dispatches to the appropriate response path based on the ``stream`` flag
+    in the request body.
+
+    Args:
+        body: Validated :class:`ChatRequest` containing provider credentials,
+            model parameters, and the conversation history.
+
+    Returns:
+        A :class:`StreamingResponse` (SSE, ``text/event-stream``) when
+        ``body.stream`` is ``True``; a :class:`ChatResponse` JSON payload
+        otherwise.  On streaming errors the stream emits a terminal
+        ``StreamErrorEvent`` frame rather than raising an HTTP exception,
+        because the 200 status has already been sent.
     """
+    from kitkat.service.byok import BYOKLLMService
+
+    # use_enum_values=True on ChatRequest stores provider as a plain str.
+    # Reconstruct the enum, then cast to ByokProviderType so pyright knows
+    # the value is one of the three BYOK-supported provider literals —
+    # ChatRequest validation already guarantees this constraint at the boundary.
+    provider = cast("ByokProviderType", ProviderType(body.provider))
+
     if body.stream:
         return StreamingResponse(
-            _byok_stream_generator(body),
+            byok_stream_generator(
+                provider=provider,
+                api_key=body.api_key,
+                model=body.model,
+                llm_request=body.to_llm_request(),
+            ),
             media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
         )
 
     async with BYOKLLMService(
-        provider_type=body.provider,
+        provider_type=provider,
         api_key=body.api_key,
         model=body.model,
     ) as svc:
         response = await svc.complete(body.to_llm_request())
-        return ChatResponse.from_domain(response)
+
+    return ChatResponse.from_llm_response(response)

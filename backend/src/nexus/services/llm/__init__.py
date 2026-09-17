@@ -1,24 +1,26 @@
-"""Expose LLM provider services for external imports via kitkat."""
+"""Expose the public interface for the LLM service package.
+
+Only Nexus-specific constructs are re-exported here. kitkat domain types
+(LLMRequest, LLMResponse, StreamChunk, etc.) are imported directly from
+the kitkat package at the call site.
+"""
 
 from __future__ import annotations
 
-from kitkat import LLMProvider, LLMRequest, LLMResponse, Message, Role
-from kitkat.providers.anthropic import AnthropicConfig, AnthropicProvider
-from kitkat.providers.google import GeminiConfig, GeminiProvider
-from kitkat.providers.openai import OpenAIConfig, OpenAIProvider
-from kitkat.service import BYOKLLMService
+from nexus.services.llm.schemas import (
+    StreamChunkEvent,
+    StreamErrorEvent,
+    StreamErrorPayload,
+    StreamEventType,
+    StreamSSEEvent,
+)
+from nexus.services.llm.sse import byok_stream_generator
 
 __all__ = [
-    "LLMRequest",
-    "LLMProvider",
-    "LLMResponse",
-    "Message",
-    "Role",
-    "BYOKLLMService",
-    "AnthropicConfig",
-    "AnthropicProvider",
-    "GeminiConfig",
-    "GeminiProvider",
-    "OpenAIConfig",
-    "OpenAIProvider",
+    "StreamChunkEvent",
+    "StreamErrorEvent",
+    "StreamErrorPayload",
+    "StreamEventType",
+    "StreamSSEEvent",
+    "byok_stream_generator",
 ]
