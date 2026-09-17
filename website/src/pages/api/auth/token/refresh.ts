@@ -1,0 +1,215 @@
+/**
+ * POST /api/auth/token/refresh — Access-token refresh proxy for the desktop app.
+ *
+ * The desktop app POSTs { refresh_token } here when its access_token has expired.
+ * This endpoint proxies the request to Supabase GoTrue using the
+ * refresh_token grant type and returns the new rotated token pair.
+ *
+ * Supabase rotates refresh tokens on every use — the desktop app MUST
+ * persist the new refresh_token returned in the response, replacing the old one.
+ */
+
+export const prerender = false;
+
+import type { APIRoute } from "astro";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../../../../lib/supabase";
+
+const TAURI_ORIGINS = new Set([
+  "http://localhost:1420", // Dev mode
+  "tauri://localhost", // macOS/Linux
+  "https://tauri.localhost", // Windows (WebView2)
+]);
+
+function resolveOrigin(request: Request): string | null {
+  const origin = request.headers.get("Origin");
+  return origin !== null && TAURI_ORIGINS.has(origin) ? origin : null;
+}
+
+function corsHeaders(origin: string): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "7200",
+    Vary: "Origin",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type RefreshRequestBody = {
+  refresh_token?: unknown;
+};
+
+type RefreshSuccess = {
+  ok: true;
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+};
+
+type RefreshErrorCode =
+  | "INVALID_BODY"
+  | "UNKNOWN_CLIENT"
+  | "INVALID_GRANT"
+  | "RATE_LIMITED"
+  | "API_ERROR";
+
+type RefreshError = {
+  ok: false;
+  error: {
+    code: RefreshErrorCode;
+    message: string;
+  };
+};
+
+type RefreshResponse = RefreshSuccess | RefreshError;
+
+function json(
+  body: RefreshResponse,
+  status: number,
+  origin: string,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
+  });
+}
+
+function errorResponse(
+  status: number,
+  code: RefreshErrorCode,
+  message: string,
+  origin: string,
+): Response {
+  return json({ ok: false, error: { code, message } }, status, origin);
+}
+
+// ---------------------------------------------------------------------------
+// OPTIONS — CORS preflight handler
+// ---------------------------------------------------------------------------
+
+export const OPTIONS: APIRoute = ({ request }) => {
+  const origin = resolveOrigin(request);
+  if (origin === null) {
+    return new Response(null, { status: 403 });
+  }
+  return new Response(null, { status: 204, headers: corsHeaders(origin) });
+};
+
+// ---------------------------------------------------------------------------
+// POST — token refresh handler
+// ---------------------------------------------------------------------------
+
+export const POST: APIRoute = async ({ request }) => {
+  const origin = resolveOrigin(request);
+  if (origin === null) {
+    return new Response(null, { status: 403 });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    return errorResponse(
+      400,
+      "INVALID_BODY",
+      "Request body must be valid JSON.",
+      origin,
+    );
+  }
+
+  const { refresh_token } = (parsed ?? {}) as RefreshRequestBody;
+
+  if (typeof refresh_token !== "string" || refresh_token.trim().length === 0) {
+    return errorResponse(
+      400,
+      "INVALID_BODY",
+      "A non-empty refresh_token is required.",
+      origin,
+    );
+  }
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ refresh_token: refresh_token.trim() }),
+      },
+    );
+
+    const data = (await res.json().catch(() => null)) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      error?: string;
+      error_description?: string;
+      msg?: string;
+    } | null;
+
+    if (!res.ok || !data || !data.access_token || !data.refresh_token) {
+      const errMsg =
+        data?.error_description ||
+        data?.msg ||
+        data?.error ||
+        "Token refresh failed.";
+
+      if (
+        res.status === 400 ||
+        res.status === 401 ||
+        /invalid.grant/i.test(errMsg) ||
+        /invalid_grant/i.test(errMsg) ||
+        /expired/i.test(errMsg) ||
+        /not found/i.test(errMsg)
+      ) {
+        return errorResponse(
+          401,
+          "INVALID_GRANT",
+          "The refresh token is invalid or has expired. Please sign in again.",
+          origin,
+        );
+      }
+
+      if (res.status === 429 || /rate/i.test(errMsg)) {
+        return errorResponse(
+          429,
+          "RATE_LIMITED",
+          "Too many refresh attempts. Please wait a moment and try again.",
+          origin,
+        );
+      }
+
+      console.error("[api/auth/token/refresh] Supabase refresh failed:", errMsg);
+      return errorResponse(
+        502,
+        "API_ERROR",
+        "Token refresh failed. Please try again.",
+        origin,
+      );
+    }
+
+    const body: RefreshSuccess = {
+      ok: true,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in ?? 3600,
+    };
+
+    return json(body, 200, origin);
+  } catch (err) {
+    console.error("[api/auth/token/refresh] Unexpected error:", err);
+    return errorResponse(
+      502,
+      "API_ERROR",
+      "Token refresh failed. Please try again.",
+      origin,
+    );
+  }
+};
