@@ -30,7 +30,6 @@ export interface CurrentUser {
 interface JwtPayload {
   sub?: string;
   email?: string;
-  sid?: string; // WorkOS session ID — used for server-side logout
   first_name?: string;
   firstName?: string;
   given_name?: string;
@@ -79,9 +78,9 @@ function decodeJwtPayload(token: string): JwtPayload | null {
   }
 }
 
-const REFRESH_ENDPOINT = "https://api.workos.com/user_management/authenticate";
-const LOGOUT_ENDPOINT =
-  "https://api.workos.com/user_management/sessions/logout";
+const REFRESH_ENDPOINT =
+  "https://pinac.rajeshmondal.com/api/auth/token/refresh";
+const LOGOUT_ENDPOINT = "https://pinac.rajeshmondal.com/api/auth/signout";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -264,7 +263,6 @@ export async function silentRefresh(): Promise<RefreshResult> {
   } catch (saveErr) {
     return { ok: false, reason: "UNKNOWN", message: String(saveErr) };
   }
-
   return { ok: true };
 }
 
@@ -316,36 +314,16 @@ export async function logout(remoteRevoke = true): Promise<void> {
   stopRefreshTimer();
 
   if (remoteRevoke) {
-    try {
-      const stored = await getTokens();
-      if (stored?.accessToken) {
-        const payload = decodeJwtPayload(stored.accessToken);
-        const sessionId = payload?.sid;
-
-        if (sessionId) {
-          // WorkOS server-side session revocation.
-          // Endpoint: POST /user_management/sessions/logout  { session_id }
-          // This invalidates the refresh token so it cannot be reused from
-          // another device or process after logout.
-          // Ref: https://workos.com/docs/reference/authkit/authentication
-          await fetch(LOGOUT_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sessionId }),
-          });
-          // Intentionally not checking the response — logout is best-effort.
-          // If the request fails, tokens are still cleared locally.
-        }
-      }
-    } catch {
-      // Network failure during revocation — proceed with local logout.
+    const stored = await getTokens();
+    if (stored?.accessToken) {
+      await fetch(LOGOUT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${stored.accessToken}`,
+        },
+      });
     }
   }
-
-  try {
-    await clearTokens();
-  } catch {
-    // Swallow — even if clearTokens fails (e.g. permission error), the
-    // refresh timer is stopped and the session_id is invalidated server-side.
-  }
+  await clearTokens();
 }
